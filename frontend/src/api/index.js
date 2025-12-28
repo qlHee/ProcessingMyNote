@@ -24,11 +24,6 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // 只在非登录请求且401错误时清除token
-    const isAuthRequest = error.config?.url?.includes('/auth/');
-    if (error.response?.status === 401 && !isAuthRequest) {
-      localStorage.removeItem('token');
-    }
     return Promise.reject(error);
   }
 );
@@ -67,17 +62,7 @@ export const tagsAPI = {
 export const notesAPI = {
   getAll: (params) => api.get('/notes', { params }),
   getOne: (id) => api.get(`/notes/${id}`),
-  upload: (formData) => {
-    // 直接从 localStorage 获取 token 并添加到请求头
-    const token = localStorage.getItem('token');
-    return axios.post('/api/notes/upload', formData, {
-      headers: { 
-        'Content-Type': 'multipart/form-data',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-      },
-      timeout: 60000,
-    });
-  },
+  upload: (formData) => api.post('/notes/upload', formData),
   update: (id, data) => api.put(`/notes/${id}`, data),
   delete: (id) => api.delete(`/notes/${id}`),
   reprocess: (id, params) => api.post(`/notes/${id}/reprocess`, params),

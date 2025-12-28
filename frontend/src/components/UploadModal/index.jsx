@@ -28,6 +28,13 @@ export default function UploadModal({ open, onClose }) {
 
     try {
       for (const file of fileList) {
+        // 确保文件大小合理
+        if (file.size > 10 * 1024 * 1024) { // 10MB限制
+          message.error(`文件 ${file.name} 太大，请上传小于10MB的图片`)
+          setUploading(false)
+          return
+        }
+        
         const result = await uploadNote(file.originFileObj, {
           title: values.title,
           folder_id: values.folder_id,
@@ -35,7 +42,7 @@ export default function UploadModal({ open, onClose }) {
         })
 
         if (!result.success) {
-          message.error(`上传失败: ${result.error}`)
+          message.error(`上传失败: ${result.error || '认证失败，请重新登录'}`)
           setUploading(false)
           return
         }
@@ -47,7 +54,8 @@ export default function UploadModal({ open, onClose }) {
       fetchNotes()
       onClose()
     } catch (error) {
-      message.error('上传失败')
+      console.error('上传笔记错误:', error)
+      message.error(`上传失败: ${error.response?.data?.detail || error.message || '请检查网络连接'}`)
     } finally {
       setUploading(false)
     }

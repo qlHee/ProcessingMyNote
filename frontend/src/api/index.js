@@ -68,11 +68,10 @@ export const notesAPI = {
   getAll: (params) => api.get('/notes', { params }),
   getOne: (id) => api.get(`/notes/${id}`),
   upload: (formData) => {
-    const token = localStorage.getItem('token');
+    // 不需要手动添加Authorization头，让axios拦截器处理
     return api.post('/notes/upload', formData, {
       headers: { 
-        'Content-Type': 'multipart/form-data',
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'multipart/form-data'
       },
     });
   },

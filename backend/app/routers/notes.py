@@ -290,15 +290,14 @@ async def delete_note(
 async def get_note_image(
     note_id: int,
     image_type: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: AsyncSession = Depends(get_db)
 ):
     """
-    Get note image file
+    Get note image file (public access)
     - image_type: 'original' or 'processed'
     """
     result = await db.execute(
-        select(Note).where(Note.id == note_id, Note.user_id == current_user.id)
+        select(Note).where(Note.id == note_id)
     )
     note = result.scalar_one_or_none()
     if not note:

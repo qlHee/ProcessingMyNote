@@ -50,7 +50,7 @@ export default function UploadModal({ open, onClose }) {
         if (values.folder_id) formData.append('folder_id', values.folder_id)
         if (values.tag_ids?.length) formData.append('tag_ids', values.tag_ids.join(','))
 
-        await axios.post('/api/notes/upload', formData, {
+        const response = await axios.post('/api/notes/upload', formData, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'

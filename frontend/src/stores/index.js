@@ -2,6 +2,7 @@
  * Zustand Store - Global state management
  */
 import { create } from 'zustand';
+import axios from 'axios';
 import { authAPI, foldersAPI, tagsAPI, notesAPI } from '../api';
 
 // Auth Store
@@ -248,14 +249,27 @@ export const useNotesStore = create((set, get) => ({
 
   deleteNote: async (id) => {
     try {
-      await notesAPI.delete(id);
+      // 检查token是否存在
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return { success: false, error: '未登录，请先登录' };
+      }
+
+      // 直接使用axios发送删除请求
+      await axios.delete(`/api/notes/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
       set((state) => ({
         notes: state.notes.filter((n) => n.id !== id),
         currentNote: state.currentNote?.id === id ? null : state.currentNote,
       }));
       return { success: true };
     } catch (error) {
-      return { success: false, error: error.response?.data?.detail };
+      console.error('Delete error:', error);
+      return { success: false, error: error.response?.data?.detail || '删除失败' };
     }
   },
 

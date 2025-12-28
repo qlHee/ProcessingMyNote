@@ -56,7 +56,8 @@ export const useAuthStore = create((set, get) => ({
       const res = await authAPI.getMe();
       set({ user: res.data });
     } catch (error) {
-      get().logout();
+      // 不要在获取用户信息失败时登出，只记录错误
+      console.error('Failed to fetch user:', error);
     }
   },
 
@@ -218,15 +219,8 @@ export const useNotesStore = create((set, get) => ({
   uploadNote: async (file, data = {}) => {
     // 检查token是否存在
     const token = localStorage.getItem('token');
-    console.log('Upload - Token check:', token ? 'exists' : 'missing');
     if (!token) {
-      // 尝试从 store 中获取
-      const storeToken = get().token;
-      if (!storeToken) {
-        return { success: false, error: '未登录，请先登录' };
-      }
-      // 如果store中有token但localStorage中没有，重新保存
-      localStorage.setItem('token', storeToken);
+      return { success: false, error: '未登录，请先登录' };
     }
     
     const formData = new FormData();

@@ -10,11 +10,12 @@ import {
 import { 
   ArrowLeftOutlined, EditOutlined, DeleteOutlined, MoreOutlined,
   FileImageOutlined, EyeOutlined, SettingOutlined, TagsOutlined,
-  FolderOutlined, ClockCircleOutlined, FileTextOutlined
+  FolderOutlined, ClockCircleOutlined, FileTextOutlined, HighlightOutlined
 } from '@ant-design/icons'
 import { useNotesStore, useFoldersStore, useTagsStore } from '../../stores'
 import { notesAPI } from '../../api'
 import AIAssistant from '../../components/AIAssistant'
+import NoteAnnotator from '../../components/NoteAnnotator'
 import './index.css'
 
 const { Title, Text, Paragraph } = Typography
@@ -191,6 +192,16 @@ export default function NoteDetail() {
                   <AIAssistant 
                     noteId={currentNote.id} 
                     onAdjustSuccess={() => fetchNote(id)}
+                  />
+                ),
+              },
+              {
+                key: 'annotate',
+                label: <><HighlightOutlined /> 标注</>,
+                children: (
+                  <NoteAnnotator
+                    noteId={currentNote.id}
+                    imageSrc={notesAPI.getImageUrl(currentNote.id, 'processed')}
                   />
                 ),
               },

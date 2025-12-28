@@ -67,9 +67,15 @@ export const tagsAPI = {
 export const notesAPI = {
   getAll: (params) => api.get('/notes', { params }),
   getOne: (id) => api.get(`/notes/${id}`),
-  upload: (formData) => api.post('/notes/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  upload: (formData) => {
+    const token = localStorage.getItem('token');
+    return api.post('/notes/upload', formData, {
+      headers: { 
+        'Content-Type': 'multipart/form-data',
+        'Authorization': `Bearer ${token}`
+      },
+    });
+  },
   update: (id, data) => api.put(`/notes/${id}`, data),
   delete: (id) => api.delete(`/notes/${id}`),
   reprocess: (id, params) => api.post(`/notes/${id}/reprocess`, params),

@@ -60,12 +60,12 @@ export const tagsAPI = {
 
 // Notes API
 export const notesAPI = {
-  getAll: (params) => api.get('/notes', { params }),
-  getOne: (id) => api.get(`/notes/${id}`),
-  upload: (formData) => api.post('/notes/upload', formData),
-  update: (id, data) => api.put(`/notes/${id}`, data),
-  delete: (id) => api.delete(`/notes/${id}`),
-  reprocess: (id, params) => api.post(`/notes/${id}/reprocess`, params),
+  getAll: (params) => api.get('/notes/', { params }),
+  getOne: (id) => api.get(`/notes/${id}/`),
+  upload: (formData) => api.post('/notes/upload/', formData),
+  update: (id, data) => api.put(`/notes/${id}/`, data),
+  delete: (id) => api.delete(`/notes/${id}/`),
+  reprocess: (id, params) => api.post(`/notes/${id}/reprocess/`, params),
   getImageUrl: (id, type) => `/api/notes/${id}/image/${type}`,
 };
 

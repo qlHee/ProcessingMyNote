@@ -256,7 +256,7 @@ export const useNotesStore = create((set, get) => ({
       }
 
       // 直接使用axios发送删除请求
-      await axios.delete(`/api/notes/${id}`, {
+      await axios.delete(`/api/notes/${id}/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

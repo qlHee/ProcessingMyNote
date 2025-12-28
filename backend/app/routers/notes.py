@@ -73,7 +73,7 @@ async def get_notes(
     return result.scalars().unique().all()
 
 
-@router.get("/{note_id}", response_model=NoteResponse)
+@router.get("/{note_id}/", response_model=NoteResponse)
 async def get_note(
     note_id: int,
     db: AsyncSession = Depends(get_db),
@@ -91,7 +91,7 @@ async def get_note(
     return note
 
 
-@router.post("/upload", response_model=NoteResponse)
+@router.post("/upload/", response_model=NoteResponse)
 async def upload_note(
     file: UploadFile = File(...),
     title: Optional[str] = Form(None),
@@ -178,7 +178,7 @@ async def upload_note(
         raise HTTPException(status_code=500, detail=f"Failed to process image: {str(e)}")
 
 
-@router.put("/{note_id}", response_model=NoteResponse)
+@router.put("/{note_id}/", response_model=NoteResponse)
 async def update_note(
     note_id: int,
     note_data: NoteUpdate,
@@ -217,7 +217,7 @@ async def update_note(
     return note
 
 
-@router.post("/{note_id}/reprocess", response_model=NoteResponse)
+@router.post("/{note_id}/reprocess/", response_model=NoteResponse)
 async def reprocess_note(
     note_id: int,
     params: ProcessingParams,
@@ -257,7 +257,7 @@ async def reprocess_note(
     return note
 
 
-@router.delete("/{note_id}")
+@router.delete("/{note_id}/")
 async def delete_note(
     note_id: int,
     db: AsyncSession = Depends(get_db),

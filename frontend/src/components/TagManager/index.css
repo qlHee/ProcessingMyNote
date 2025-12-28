@@ -1,0 +1,61 @@
+.tag-manager {
+  padding: 0 8px;
+}
+
+.tag-manager-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.tag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tag-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tag-item:hover {
+  background: #f5f5f5;
+}
+
+.tag-item.selected {
+  background: #e6f4ff;
+}
+
+.tag-label {
+  margin: 0;
+  cursor: pointer;
+}
+
+.tag-actions {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.tag-item:hover .tag-actions {
+  opacity: 1;
+}
+
+.tag-empty {
+  text-align: center;
+  color: #8c8c8c;
+  padding: 16px;
+  font-size: 13px;
+}
+
+.tag-manager-collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+}

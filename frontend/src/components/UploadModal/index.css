@@ -1,0 +1,11 @@
+.upload-form {
+  margin-top: 16px;
+}
+
+.upload-form .ant-upload-drag {
+  border-radius: 8px;
+}
+
+.upload-form .ant-upload-drag:hover {
+  border-color: #1677ff;
+}

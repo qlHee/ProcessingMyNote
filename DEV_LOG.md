@@ -82,3 +82,35 @@ backend/
 启动后访问: `http://localhost:8000/docs`
 
 ---
+
+## Phase 4: 前端基础架构 ✅
+**日期:** 2024-12-28
+
+### 完成内容
+- [x] Vite + React 项目配置
+- [x] Ant Design 集成 (中文语言包)
+- [x] React Router 路由配置
+- [x] Zustand 状态管理
+- [x] Axios API 封装
+- [x] 主布局组件 (侧边栏 + 内容区)
+- [x] 登录/注册页面
+- [x] 首页笔记列表 (网格/列表视图)
+- [x] 笔记详情页 (基础版)
+
+### 前端结构
+```
+frontend/src/
+├── api/           # API 请求封装
+├── stores/        # Zustand 状态管理
+├── components/    # 通用组件
+│   ├── Layout/
+│   ├── FolderTree/
+│   ├── TagManager/
+│   └── UploadModal/
+└── pages/         # 页面
+    ├── Login/
+    ├── Home/
+    └── NoteDetail/
+```
+
+---

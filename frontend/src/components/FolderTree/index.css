@@ -1,0 +1,69 @@
+.folder-tree {
+  padding: 0 8px;
+}
+
+.folder-tree-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.folder-all {
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #333;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+
+.folder-all:hover {
+  background: #f5f5f5;
+}
+
+.folder-all.selected {
+  background: #e6f4ff;
+  color: #1677ff;
+}
+
+.folder-tree-list .ant-tree-treenode {
+  width: 100%;
+  padding: 4px 0;
+}
+
+.folder-tree-list .ant-tree-node-content-wrapper {
+  flex: 1;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.folder-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-actions {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.folder-item:hover .folder-actions {
+  opacity: 1;
+}
+
+.folder-tree-collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+}

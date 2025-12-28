@@ -60,3 +60,25 @@ backend/
 ```
 
 ---
+
+## Phase 3: 后端核心 API ✅
+**日期:** 2024-12-28
+
+### 完成内容
+- [x] Notes API: 完整 CRUD
+  - `POST /api/notes/upload` - 上传笔记 (自动处理+OCR)
+  - `GET /api/notes` - 列表 (支持文件夹/标签/关键词过滤)
+  - `GET /api/notes/{id}` - 详情
+  - `PUT /api/notes/{id}` - 更新元数据
+  - `DELETE /api/notes/{id}` - 删除
+  - `POST /api/notes/{id}/reprocess` - 重新处理图片
+  - `GET /api/notes/{id}/image/{type}` - 获取图片
+- [x] AI API: 自然语言调整
+  - `POST /api/ai/adjust` - AI 驱动的参数调整
+- [x] Annotations API: 标注 CRUD
+  - `GET/POST/PUT/DELETE /api/notes/{id}/annotations`
+
+### API 文档
+启动后访问: `http://localhost:8000/docs`
+
+---

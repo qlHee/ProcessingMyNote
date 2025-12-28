@@ -4,7 +4,8 @@
 import { useState } from 'react'
 import { Modal, Upload, Form, Input, Select, message } from 'antd'
 import { InboxOutlined } from '@ant-design/icons'
-import { useNotesStore, useFoldersStore, useTagsStore } from '../../stores'
+import { useFoldersStore, useTagsStore, useNotesStore } from '../../stores'
+import axios from 'axios'
 import './index.css'
 
 const { Dragger } = Upload
@@ -12,7 +13,7 @@ const { Dragger } = Upload
 export default function UploadModal({ open, onClose }) {
   const [uploading, setUploading] = useState(false)
   const [fileList, setFileList] = useState([])
-  const { uploadNote, fetchNotes } = useNotesStore()
+  const { fetchNotes } = useNotesStore()
   const { folders } = useFoldersStore()
   const { tags } = useTagsStore()
   const [form] = Form.useForm()
@@ -23,29 +24,39 @@ export default function UploadModal({ open, onClose }) {
       return
     }
 
+    // 检查token
+    const token = localStorage.getItem('token')
+    if (!token) {
+      message.error('请先登录')
+      return
+    }
+
     const values = form.getFieldsValue()
     setUploading(true)
 
     try {
       for (const file of fileList) {
         // 确保文件大小合理
-        if (file.size > 10 * 1024 * 1024) { // 10MB限制
+        if (file.size > 10 * 1024 * 1024) {
           message.error(`文件 ${file.name} 太大，请上传小于10MB的图片`)
           setUploading(false)
           return
         }
         
-        const result = await uploadNote(file.originFileObj, {
-          title: values.title,
-          folder_id: values.folder_id,
-          tag_ids: values.tag_ids,
-        })
+        // 直接使用axios发送请求
+        const formData = new FormData()
+        formData.append('file', file.originFileObj)
+        if (values.title) formData.append('title', values.title)
+        if (values.folder_id) formData.append('folder_id', values.folder_id)
+        if (values.tag_ids?.length) formData.append('tag_ids', values.tag_ids.join(','))
 
-        if (!result.success) {
-          message.error(`上传失败: ${result.error || '认证失败，请重新登录'}`)
-          setUploading(false)
-          return
-        }
+        await axios.post('/api/notes/upload', formData, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          },
+          timeout: 60000
+        })
       }
 
       message.success('上传成功！笔记已自动处理')

@@ -2,6 +2,33 @@
   height: 100%;
 }
 
+/* Breadcrumb */
+.breadcrumb-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.breadcrumb-item.clickable {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.breadcrumb-item.clickable:hover {
+  color: #1677ff;
+}
+
+.active-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #8c8c8c;
+}
+
+/* Toolbar */
 .home-header {
   display: flex;
   justify-content: space-between;
@@ -11,7 +38,15 @@
 }
 
 .search-input {
-  max-width: 400px;
+  width: 280px;
+}
+
+.note-count {
+  padding: 4px 12px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #666;
 }
 
 .loading-container,

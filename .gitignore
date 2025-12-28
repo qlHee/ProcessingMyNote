@@ -34,6 +34,10 @@ wheels/
 
 # Virtual Environment
 venv/
+
+# ===== API Keys =====
+api_keys.py
+*/config/api_keys.py
 ENV/
 env/
 .venv/

@@ -18,7 +18,13 @@ export const useAuthStore = create((set, get) => ({
       const token = res.data.access_token;
       localStorage.setItem('token', token);
       set({ token, isAuthenticated: true, loading: false });
-      await get().fetchUser();
+      try {
+        // 获取用户信息
+        const userRes = await authAPI.getMe();
+        set({ user: userRes.data });
+      } catch (userError) {
+        console.error('Failed to fetch user info:', userError);
+      }
       return { success: true };
     } catch (error) {
       set({ loading: false });

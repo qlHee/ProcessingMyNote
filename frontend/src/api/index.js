@@ -24,9 +24,10 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // 401错误由各组件自行处理，避免自动跳转
+    if (error.response?.status === 401 && !error.config.url.includes('/auth/me')) {
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      // 不再自动跳转到登录页面，让React Router处理重定向
     }
     return Promise.reject(error);
   }

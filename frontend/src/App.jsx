@@ -11,6 +11,11 @@ function PrivateRoute({ children }) {
   return isAuthenticated ? children : <Navigate to="/login" />
 }
 
+function PublicRoute({ children }) {
+  const { isAuthenticated } = useAuthStore()
+  return isAuthenticated ? <Navigate to="/" /> : children
+}
+
 function App() {
   const { isAuthenticated, fetchUser } = useAuthStore()
 
@@ -22,7 +27,11 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      <Route path="/login" element={
+        <PublicRoute>
+          <Login />
+        </PublicRoute>
+      } />
       <Route
         path="/"
         element={

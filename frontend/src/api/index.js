@@ -68,11 +68,14 @@ export const notesAPI = {
   getAll: (params) => api.get('/notes', { params }),
   getOne: (id) => api.get(`/notes/${id}`),
   upload: (formData) => {
-    // 不需要手动添加Authorization头，让axios拦截器处理
-    return api.post('/notes/upload', formData, {
+    // 直接从 localStorage 获取 token 并添加到请求头
+    const token = localStorage.getItem('token');
+    return axios.post('/api/notes/upload', formData, {
       headers: { 
-        'Content-Type': 'multipart/form-data'
+        'Content-Type': 'multipart/form-data',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       },
+      timeout: 60000,
     });
   },
   update: (id, data) => api.put(`/notes/${id}`, data),

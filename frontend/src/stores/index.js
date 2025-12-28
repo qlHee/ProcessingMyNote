@@ -217,12 +217,6 @@ export const useNotesStore = create((set, get) => ({
   },
 
   uploadNote: async (file, data = {}) => {
-    // 检查token是否存在
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return { success: false, error: '未登录，请先登录' };
-    }
-    
     const formData = new FormData();
     formData.append('file', file);
     if (data.title) formData.append('title', data.title);
@@ -235,7 +229,7 @@ export const useNotesStore = create((set, get) => ({
       return { success: true, data: res.data };
     } catch (error) {
       console.error('Upload error:', error);
-      return { success: false, error: error.response?.data?.detail || 'Upload failed' };
+      return { success: false, error: error.response?.data?.detail || '上传失败' };
     }
   },
 

@@ -1,10 +1,11 @@
 """
 OCR Service - Text recognition from images
-Uses PaddleOCR for Chinese/English text recognition
+Uses pytesseract or PaddleOCR for Chinese/English text recognition
 """
 import re
 from pathlib import Path
 from typing import Optional
+from datetime import datetime
 
 
 class OCRService:
@@ -15,6 +16,7 @@ class OCRService:
     
     _instance = None
     _ocr = None
+    _ocr_type = None  # 'tesseract', 'paddle', or None
     
     def __new__(cls):
         """Singleton pattern for OCR instance (heavy to initialize)"""
@@ -26,21 +28,43 @@ class OCRService:
         self._initialized = False
     
     def _ensure_initialized(self):
-        """Lazy initialization of PaddleOCR"""
+        """Lazy initialization of OCR engine"""
         if not self._initialized:
+            # Try pytesseract first (more stable)
+            try:
+                import pytesseract
+                from PIL import Image
+                # Test if tesseract is available
+                pytesseract.get_tesseract_version()
+                self._ocr = pytesseract
+                self._ocr_type = 'tesseract'
+                self._initialized = True
+                print("OCR: Using pytesseract")
+                return
+            except Exception as e:
+                print(f"pytesseract not available: {e}")
+            
+            # Try PaddleOCR as fallback
             try:
                 from paddleocr import PaddleOCR
                 self._ocr = PaddleOCR(
                     use_angle_cls=True,
-                    lang='ch',  # Chinese + English
+                    lang='ch',
                     use_gpu=False,
                     show_log=False,
                 )
+                self._ocr_type = 'paddle'
                 self._initialized = True
-            except ImportError:
-                print("Warning: PaddleOCR not installed. Using mock OCR.")
-                self._ocr = None
-                self._initialized = True
+                print("OCR: Using PaddleOCR")
+                return
+            except Exception as e:
+                print(f"PaddleOCR not available: {e}")
+            
+            # No OCR available
+            print("Warning: No OCR engine available. Using timestamp-based naming.")
+            self._ocr = None
+            self._ocr_type = None
+            self._initialized = True
     
     def extract_text(self, image_path: str) -> str:
         """
@@ -55,30 +79,39 @@ class OCRService:
         self._ensure_initialized()
         
         if self._ocr is None:
-            return self._mock_extract(image_path)
+            return self._generate_default_text(image_path)
         
         try:
-            result = self._ocr.ocr(image_path, cls=True)
+            if self._ocr_type == 'tesseract':
+                from PIL import Image
+                img = Image.open(image_path)
+                # Try Chinese + English
+                text = self._ocr.image_to_string(img, lang='chi_sim+eng')
+                if not text.strip():
+                    text = self._ocr.image_to_string(img, lang='eng')
+                return text.strip()
             
-            if not result or not result[0]:
-                return ""
-            
-            # Extract text from OCR result
-            lines = []
-            for line in result[0]:
-                if line and len(line) >= 2:
-                    text = line[1][0]  # Text content
-                    lines.append(text)
-            
-            return "\n".join(lines)
+            elif self._ocr_type == 'paddle':
+                result = self._ocr.ocr(image_path, cls=True)
+                if not result or not result[0]:
+                    return ""
+                lines = []
+                for line in result[0]:
+                    if line and len(line) >= 2:
+                        text = line[1][0]
+                        lines.append(text)
+                return "\n".join(lines)
+        
         except Exception as e:
             print(f"OCR error: {e}")
-            return self._mock_extract(image_path)
+            return self._generate_default_text(image_path)
+        
+        return self._generate_default_text(image_path)
     
-    def _mock_extract(self, image_path: str) -> str:
-        """Mock OCR for testing when PaddleOCR is not available"""
-        filename = Path(image_path).stem
-        return f"[OCR Mock] Content from: {filename}"
+    def _generate_default_text(self, image_path: str) -> str:
+        """Generate default text when OCR is not available"""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        return f"笔记 - {timestamp}"
     
     def generate_title(self, image_path: str, max_length: int = 50) -> str:
         """

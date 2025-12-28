@@ -294,7 +294,7 @@ async def get_note_image(
 ):
     """
     Get note image file (public access)
-    - image_type: 'original' or 'processed'
+    - image_type: 'original', 'processed', or 'annotated'
     """
     result = await db.execute(
         select(Note).where(Note.id == note_id)
@@ -312,8 +312,16 @@ async def get_note_image(
         image_path = settings.BASE_DIR / note.original_path
     elif image_type == "processed":
         image_path = settings.BASE_DIR / note.processed_path
+    elif image_type == "annotated":
+        # 尝试获取带标记的图片，如果不存在则返回处理后的图片
+        processed_path = Path(note.processed_path)
+        annotated_path = settings.BASE_DIR / processed_path.parent / f"{processed_path.stem}_annotated{processed_path.suffix}"
+        if annotated_path.exists():
+            return FileResponse(annotated_path)
+        else:
+            image_path = settings.BASE_DIR / note.processed_path
     else:
-        raise HTTPException(status_code=400, detail="Invalid image type. Use 'original' or 'processed'")
+        raise HTTPException(status_code=400, detail="Invalid image type. Use 'original', 'processed', or 'annotated'")
     
     if not image_path.exists():
         # 如果图片文件不存在，返回默认示例图片

@@ -71,12 +71,12 @@ export const notesAPI = {
 
 // Annotations API
 export const annotationsAPI = {
-  getAll: (noteId) => api.get(`/notes/${noteId}/annotations`),
-  create: (noteId, data) => api.post(`/notes/${noteId}/annotations`, data),
+  getAll: (noteId) => api.get(`/notes/${noteId}/annotations/`),
+  create: (noteId, data) => api.post(`/notes/${noteId}/annotations/`, data),
   update: (noteId, annotationId, data) => 
-    api.put(`/notes/${noteId}/annotations/${annotationId}`, data),
+    api.put(`/notes/${noteId}/annotations/${annotationId}/`),
   delete: (noteId, annotationId) => 
-    api.delete(`/notes/${noteId}/annotations/${annotationId}`),
+    api.delete(`/notes/${noteId}/annotations/${annotationId}/`),
 };
 
 // AI API

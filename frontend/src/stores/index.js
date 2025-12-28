@@ -16,7 +16,14 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await authAPI.login(username, password);
       const token = res.data.access_token;
-      localStorage.setItem('token', token);
+      // 确保token正确保存
+      if (token) {
+        localStorage.setItem('token', token);
+        console.log('Token saved:', token.substring(0, 20) + '...');
+      } else {
+        console.error('No token received from login');
+        return { success: false, error: 'No token received' };
+      }
       set({ token, isAuthenticated: true, loading: false });
       try {
         // 获取用户信息
@@ -209,6 +216,19 @@ export const useNotesStore = create((set, get) => ({
   },
 
   uploadNote: async (file, data = {}) => {
+    // 检查token是否存在
+    const token = localStorage.getItem('token');
+    console.log('Upload - Token check:', token ? 'exists' : 'missing');
+    if (!token) {
+      // 尝试从 store 中获取
+      const storeToken = get().token;
+      if (!storeToken) {
+        return { success: false, error: '未登录，请先登录' };
+      }
+      // 如果store中有token但localStorage中没有，重新保存
+      localStorage.setItem('token', storeToken);
+    }
+    
     const formData = new FormData();
     formData.append('file', file);
     if (data.title) formData.append('title', data.title);
@@ -220,7 +240,8 @@ export const useNotesStore = create((set, get) => ({
       set((state) => ({ notes: [res.data, ...state.notes] }));
       return { success: true, data: res.data };
     } catch (error) {
-      return { success: false, error: error.response?.data?.detail };
+      console.error('Upload error:', error);
+      return { success: false, error: error.response?.data?.detail || 'Upload failed' };
     }
   },
 

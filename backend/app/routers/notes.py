@@ -4,7 +4,7 @@ Notes Router - Full CRUD for notes with image upload and processing
 import uuid
 import shutil
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_
@@ -302,7 +302,12 @@ async def get_note_image(
     )
     note = result.scalar_one_or_none()
     if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+        # 如果笔记不存在，返回默认示例图片
+        default_image = settings.BASE_DIR / "backend" / "app" / "static" / "example_note.jpg"
+        if default_image.exists():
+            return FileResponse(default_image)
+        else:
+            raise HTTPException(status_code=404, detail="Note not found")
     
     if image_type == "original":
         image_path = settings.BASE_DIR / note.original_path
@@ -312,6 +317,11 @@ async def get_note_image(
         raise HTTPException(status_code=400, detail="Invalid image type. Use 'original' or 'processed'")
     
     if not image_path.exists():
-        raise HTTPException(status_code=404, detail="Image file not found")
+        # 如果图片文件不存在，返回默认示例图片
+        default_image = settings.BASE_DIR / "backend" / "app" / "static" / "example_note.jpg"
+        if default_image.exists():
+            return FileResponse(default_image)
+        else:
+            raise HTTPException(status_code=404, detail="Image file not found")
     
     return FileResponse(image_path)

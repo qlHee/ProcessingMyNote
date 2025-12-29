@@ -23,7 +23,7 @@ const { Title, Text, Paragraph } = Typography
 export default function NoteDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [editModalVisible, setEditModalVisible] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
   const [imageMode, setImageMode] = useState('processed')
   const [form] = Form.useForm()
 
@@ -42,18 +42,27 @@ export default function NoteDetail() {
       folder_id: currentNote.folder_id,
       tag_ids: currentNote.tags?.map(t => t.id) || [],
     })
-    setEditModalVisible(true)
+    setIsEditing(true)
   }
 
   const handleEditSubmit = async (values) => {
     const result = await updateNote(currentNote.id, values)
     if (result.success) {
       message.success('更新成功')
-      setEditModalVisible(false)
+      setIsEditing(false)
       fetchNote(id)
     } else {
       message.error(result.error || '更新失败')
     }
+  }
+
+  const handleCancelEdit = () => {
+    form.setFieldsValue({
+      title: currentNote.title,
+      folder_id: currentNote.folder_id,
+      tag_ids: currentNote.tags?.map(t => t.id) || [],
+    })
+    setIsEditing(false)
   }
 
   const handleDelete = () => {
@@ -99,18 +108,55 @@ export default function NoteDetail() {
           </Button>
         </Space>
         
-        <Title level={4} className="note-detail-title">
-          {currentNote.title}
-        </Title>
-
-        <Space>
-          <Button icon={<EditOutlined />} onClick={handleEdit}>
-            编辑
-          </Button>
-          <Button danger icon={<DeleteOutlined />} onClick={handleDelete}>
-            删除
-          </Button>
-        </Space>
+        {isEditing ? (
+          <Form form={form} onFinish={handleEditSubmit} layout="inline" style={{ flex: 1 }}>
+            <Form.Item
+              name="title"
+              rules={[{ required: true, message: '请输入标题' }]}
+              style={{ flex: 1, marginBottom: 0 }}
+            >
+              <Input style={{ fontSize: '20px', fontWeight: 'bold' }} />
+            </Form.Item>
+            <Form.Item name="folder_id" style={{ marginBottom: 0 }}>
+              <Select placeholder="文件夹" style={{ width: 120 }}>
+                {folders.map(folder => (
+                  <Select.Option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="tag_ids" style={{ marginBottom: 0 }}>
+              <Select mode="multiple" placeholder="标签" style={{ width: 150 }}>
+                {tags.map(tag => (
+                  <Select.Option key={tag.id} value={tag.id}>
+                    <span style={{ color: tag.color }}>● </span>{tag.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Button type="primary" htmlType="submit">
+              保存
+            </Button>
+            <Button onClick={handleCancelEdit}>
+              取消
+            </Button>
+          </Form>
+        ) : (
+          <>
+            <Title level={4} className="note-detail-title" style={{ margin: 0, flex: 1 }}>
+              {currentNote.title}
+            </Title>
+            <Space>
+              <Button icon={<EditOutlined />} onClick={handleEdit}>
+                编辑
+              </Button>
+              <Button danger icon={<DeleteOutlined />} onClick={handleDelete}>
+                删除
+              </Button>
+            </Space>
+          </>
+        )}
       </div>
 
       {/* Main Content */}
@@ -209,44 +255,6 @@ export default function NoteDetail() {
           />
         </div>
       </div>
-
-      {/* Edit Modal */}
-      <Modal
-        title="编辑笔记"
-        open={editModalVisible}
-        onCancel={() => setEditModalVisible(false)}
-        onOk={() => form.submit()}
-        okText="保存"
-        cancelText="取消"
-      >
-        <Form form={form} onFinish={handleEditSubmit} layout="vertical">
-          <Form.Item
-            name="title"
-            label="标题"
-            rules={[{ required: true, message: '请输入标题' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item name="folder_id" label="文件夹">
-            <Select placeholder="选择文件夹" allowClear>
-              {folders.map(folder => (
-                <Select.Option key={folder.id} value={folder.id}>
-                  {folder.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item name="tag_ids" label="标签">
-            <Select mode="multiple" placeholder="选择标签" allowClear>
-              {tags.map(tag => (
-                <Select.Option key={tag.id} value={tag.id}>
-                  <span style={{ color: tag.color }}>● </span>{tag.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   )
 }

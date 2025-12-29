@@ -54,7 +54,7 @@ async def create_tag(
     return tag
 
 
-@router.put("/{tag_id}", response_model=TagResponse)
+@router.put("/{tag_id}/", response_model=TagResponse)
 async def update_tag(
     tag_id: int,
     tag_data: TagUpdate,
@@ -82,7 +82,7 @@ async def update_tag(
     return tag
 
 
-@router.delete("/{tag_id}")
+@router.delete("/{tag_id}/")
 async def delete_tag(
     tag_id: int,
     db: AsyncSession = Depends(get_db),

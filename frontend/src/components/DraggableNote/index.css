@@ -1,0 +1,11 @@
+.note-card.dragging {
+  opacity: 0.5;
+  transform: rotate(5deg);
+  cursor: grabbing;
+}
+
+.note-list-item.dragging {
+  opacity: 0.5;
+  transform: rotate(5deg);
+  cursor: grabbing;
+}

@@ -30,7 +30,7 @@ class AdjustResponse(BaseModel):
     new_params: dict
 
 
-@router.post("/adjust", response_model=AdjustResponse)
+@router.post("/adjust/", response_model=AdjustResponse)
 async def ai_adjust(
     request: AdjustRequest,
     db: AsyncSession = Depends(get_db),

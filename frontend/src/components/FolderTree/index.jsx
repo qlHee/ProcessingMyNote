@@ -12,6 +12,7 @@ import {
   MoreOutlined,
 } from '@ant-design/icons'
 import { useFoldersStore, useNotesStore } from '../../stores'
+import DroppableFolder from '../DroppableFolder'
 import './index.css'
 
 export default function FolderTree({ collapsed }) {
@@ -24,11 +25,25 @@ export default function FolderTree({ collapsed }) {
     deleteFolder,
     setSelectedFolder,
   } = useFoldersStore()
-  const { fetchNotes } = useNotesStore()
+  const { fetchNotes, updateNote } = useNotesStore()
 
   const [modalVisible, setModalVisible] = useState(false)
   const [editingFolder, setEditingFolder] = useState(null)
   const [form] = Form.useForm()
+
+  const handleNoteDrop = async (noteId, folderId) => {
+    try {
+      const result = await updateNote(noteId, { folder_id: folderId })
+      if (result.success) {
+        message.success('笔记已移动到文件夹')
+        fetchNotes()
+      } else {
+        message.error(result.error || '移动失败')
+      }
+    } catch (error) {
+      message.error('移动失败')
+    }
+  }
 
   useEffect(() => {
     fetchFolders()
@@ -93,54 +108,56 @@ export default function FolderTree({ collapsed }) {
     return folders.map((folder) => ({
       key: String(folder.id),
       title: (
-        <div className="folder-item">
-          <span className="folder-name">{folder.name}</span>
-          {!collapsed && (
-            <Dropdown
-              menu={{
-                items: [
-                  {
-                    key: 'add',
-                    icon: <PlusOutlined />,
-                    label: '新建子文件夹',
-                    onClick: (e) => {
-                      e.domEvent.stopPropagation()
-                      handleCreate(folder.id)
+        <DroppableFolder folder={folder} onDrop={handleNoteDrop}>
+          <div className="folder-item">
+            <span className="folder-name">{folder.name}</span>
+            {!collapsed && (
+              <Dropdown
+                menu={{
+                  items: [
+                    {
+                      key: 'add',
+                      icon: <PlusOutlined />,
+                      label: '新建子文件夹',
+                      onClick: (e) => {
+                        e.domEvent.stopPropagation()
+                        handleCreate(folder.id)
+                      },
                     },
-                  },
-                  {
-                    key: 'edit',
-                    icon: <EditOutlined />,
-                    label: '重命名',
-                    onClick: (e) => {
-                      e.domEvent.stopPropagation()
-                      handleEdit(folder)
+                    {
+                      key: 'edit',
+                      icon: <EditOutlined />,
+                      label: '重命名',
+                      onClick: (e) => {
+                        e.domEvent.stopPropagation()
+                        handleEdit(folder)
+                      },
                     },
-                  },
-                  {
-                    key: 'delete',
-                    icon: <DeleteOutlined />,
-                    label: '删除',
-                    danger: true,
-                    onClick: (e) => {
-                      e.domEvent.stopPropagation()
-                      handleDelete(folder)
+                    {
+                      key: 'delete',
+                      icon: <DeleteOutlined />,
+                      label: '删除',
+                      danger: true,
+                      onClick: (e) => {
+                        e.domEvent.stopPropagation()
+                        handleDelete(folder)
+                      },
                     },
-                  },
-                ],
-              }}
-              trigger={['click']}
-            >
-              <Button
-                type="text"
-                size="small"
-                icon={<MoreOutlined />}
-                className="folder-actions"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </Dropdown>
-          )}
-        </div>
+                  ],
+                }}
+                trigger={['click']}
+              >
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<MoreOutlined />}
+                  className="folder-actions"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </Dropdown>
+            )}
+          </div>
+        </DroppableFolder>
       ),
       icon: ({ expanded }) =>
         expanded ? <FolderOpenOutlined /> : <FolderOutlined />,

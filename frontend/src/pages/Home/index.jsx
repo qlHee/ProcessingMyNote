@@ -7,6 +7,8 @@ import {
   Input, Segmented, Empty, Spin, Card, Tag, Dropdown, Modal, message,
   Breadcrumb, Select, Space, Tooltip, Badge
 } from 'antd'
+import { DndProvider } from 'react-dnd'
+import { HTML5Backend } from 'react-dnd-html5-backend'
 import {
   AppstoreOutlined,
   BarsOutlined,
@@ -22,6 +24,7 @@ import {
 } from '@ant-design/icons'
 import { useNotesStore, useFoldersStore, useTagsStore } from '../../stores'
 import { notesAPI } from '../../api'
+import DraggableNote from '../../components/DraggableNote'
 import './index.css'
 
 export default function Home() {
@@ -108,101 +111,17 @@ export default function Home() {
     },
   ]
 
-  const renderNoteCard = (note) => (
-    <Card
-      key={note.id}
-      className="note-card"
-      hoverable
-      onClick={() => handleNoteClick(note)}
-      cover={
-        <div className="note-cover">
-          <img
-            src={notesAPI.getImageUrl(note.id, 'processed')}
-            alt={note.title}
-            onError={(e) => {
-              e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f0f0f0" width="100" height="100"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23999">No Image</text></svg>'
-            }}
-          />
-        </div>
-      }
-    >
-      <Card.Meta
-        title={
-          <div className="note-title">
-            <span>{note.title}</span>
-            <Dropdown
-              menu={{ items: getMenuItems(note) }}
-              trigger={['click']}
-              placement="bottomRight"
-            >
-              <MoreOutlined
-                className="note-actions"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </Dropdown>
-          </div>
-        }
-        description={
-          <div className="note-meta">
-            <div className="note-tags">
-              {note.tags?.slice(0, 3).map((tag) => (
-                <Tag key={tag.id} color={tag.color} className="note-tag">
-                  {tag.name}
-                </Tag>
-              ))}
-              {note.tags?.length > 3 && (
-                <Tag className="note-tag">+{note.tags.length - 3}</Tag>
-              )}
-            </div>
-            <div className="note-date">
-              {new Date(note.created_at).toLocaleDateString()}
-            </div>
-          </div>
-        }
-      />
-    </Card>
-  )
+  const renderNoteCard = (note) => {
+    const draggableNote = DraggableNote({ note, onClick: handleNoteClick, getMenuItems })
+    const { renderNoteCard: renderCard } = draggableNote
+    return renderCard()
+  }
 
-  const renderNoteList = (note) => (
-    <div
-      key={note.id}
-      className="note-list-item"
-      onClick={() => handleNoteClick(note)}
-    >
-      <div className="note-list-thumb">
-        <img
-          src={notesAPI.getImageUrl(note.id, 'processed')}
-          alt={note.title}
-          onError={(e) => {
-            e.target.style.display = 'none'
-          }}
-        />
-      </div>
-      <div className="note-list-content">
-        <div className="note-list-title">{note.title}</div>
-        <div className="note-list-tags">
-          {note.tags?.map((tag) => (
-            <Tag key={tag.id} color={tag.color} className="note-tag">
-              {tag.name}
-            </Tag>
-          ))}
-        </div>
-      </div>
-      <div className="note-list-date">
-        {new Date(note.created_at).toLocaleDateString()}
-      </div>
-      <Dropdown
-        menu={{ items: getMenuItems(note) }}
-        trigger={['click']}
-        placement="bottomRight"
-      >
-        <MoreOutlined
-          className="note-list-actions"
-          onClick={(e) => e.stopPropagation()}
-        />
-      </Dropdown>
-    </div>
-  )
+  const renderNoteList = (note) => {
+    const draggableNote = DraggableNote({ note, onClick: handleNoteClick, getMenuItems })
+    const { renderNoteList: renderList } = draggableNote
+    return renderList()
+  }
 
   // Sort notes
   const sortedNotes = [...notes].sort((a, b) => {
@@ -215,7 +134,8 @@ export default function Home() {
   const breadcrumbPath = getBreadcrumbPath()
 
   return (
-    <div className="home-page">
+    <DndProvider backend={HTML5Backend}>
+      <div className="home-page">
       {/* Breadcrumb Navigation */}
       <div className="breadcrumb-bar">
         <Breadcrumb
@@ -324,6 +244,7 @@ export default function Home() {
           {sortedNotes.map(renderNoteList)}
         </div>
       )}
-    </div>
+      </div>
+    </DndProvider>
   )
 }

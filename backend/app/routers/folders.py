@@ -42,7 +42,7 @@ async def get_folders(
     return result.scalars().all()
 
 
-@router.get("/tree", response_model=list[FolderTree])
+@router.get("/tree/", response_model=list[FolderTree])
 async def get_folder_tree(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -84,7 +84,7 @@ async def create_folder(
     return folder
 
 
-@router.put("/{folder_id}", response_model=FolderResponse)
+@router.put("/{folder_id}/", response_model=FolderResponse)
 async def update_folder(
     folder_id: int,
     folder_data: FolderUpdate,
@@ -115,7 +115,7 @@ async def update_folder(
     return folder
 
 
-@router.delete("/{folder_id}")
+@router.delete("/{folder_id}/")
 async def delete_folder(
     folder_id: int,
     db: AsyncSession = Depends(get_db),

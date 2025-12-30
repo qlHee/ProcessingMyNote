@@ -64,11 +64,14 @@ async def get_notes(
         else:
             query = query.where(Note.folder_id == folder_id)
     
-    # Filter by tags
+    # Filter by tags (AND logic: note must have ALL specified tags)
     if tag_ids:
         tag_id_list = [int(tid.strip()) for tid in tag_ids.split(",") if tid.strip()]
         if tag_id_list:
-            query = query.join(NoteTag).where(NoteTag.c.tag_id.in_(tag_id_list))
+            # For each tag, join and filter to ensure note has that tag
+            for tag_id in tag_id_list:
+                note_tag_alias = NoteTag.alias()
+                query = query.join(note_tag_alias, Note.id == note_tag_alias.c.note_id).where(note_tag_alias.c.tag_id == tag_id)
     
     # Search keyword
     if keyword:

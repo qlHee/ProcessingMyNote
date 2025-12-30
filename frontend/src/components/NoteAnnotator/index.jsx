@@ -260,7 +260,7 @@ export default function NoteAnnotator({
         document.removeEventListener('mouseup', handleDragEnd)
       }
     }
-  }, [draggingId, dragOffset])
+  }, [draggingId])
 
   // Add drawing event listeners
   useEffect(() => {
@@ -277,7 +277,8 @@ export default function NoteAnnotator({
         }
       }
     }
-  }, [newAnnotation])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newAnnotation?.type])
 
   // Panel mode: render toolbar and list
   if (panelMode) {

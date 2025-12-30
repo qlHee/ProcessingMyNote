@@ -8,7 +8,7 @@ import {
   Form, Input, Select, message, Tabs, Descriptions, Segmented
 } from 'antd'
 import { 
-  ArrowLeftOutlined, DeleteOutlined,
+  ArrowLeftOutlined, DeleteOutlined, LeftOutlined, RightOutlined,
   FileImageOutlined, EyeOutlined, SettingOutlined, TagsOutlined,
   FolderOutlined, ClockCircleOutlined, FileTextOutlined, HighlightOutlined, SaveOutlined, MenuFoldOutlined, MenuUnfoldOutlined
 } from '@ant-design/icons'
@@ -28,9 +28,26 @@ export default function NoteDetail() {
   const [form] = Form.useForm()
   const { collapsed, setCollapsed } = useOutletContext()
 
-  const { currentNote, loading, fetchNote, updateNote, deleteNote, clearCurrentNote } = useNotesStore()
+  const { currentNote, notes, loading, fetchNote, updateNote, deleteNote, clearCurrentNote } = useNotesStore()
   const { folders } = useFoldersStore()
   const { tags } = useTagsStore()
+
+  // Get current note index in the notes list
+  const currentIndex = notes.findIndex(note => note.id === parseInt(id))
+  const hasPrevious = currentIndex > 0
+  const hasNext = currentIndex < notes.length - 1
+
+  const handlePrevious = () => {
+    if (hasPrevious) {
+      navigate(`/note/${notes[currentIndex - 1].id}`)
+    }
+  }
+
+  const handleNext = () => {
+    if (hasNext) {
+      navigate(`/note/${notes[currentIndex + 1].id}`)
+    }
+  }
 
   useEffect(() => {
     fetchNote(id)
@@ -150,10 +167,25 @@ export default function NoteDetail() {
         {/* Left: Image Viewer */}
         <div className="note-viewer-section">
           <div className="note-image-container">
+            {/* Navigation Buttons */}
+            <Button
+              className="nav-button nav-button-prev"
+              icon={<LeftOutlined />}
+              onClick={handlePrevious}
+              disabled={!hasPrevious}
+              size="large"
+            />
             <img
               src={notesAPI.getImageUrl(currentNote.id, imageMode)}
               alt={currentNote.title}
               className="note-image"
+            />
+            <Button
+              className="nav-button nav-button-next"
+              icon={<RightOutlined />}
+              onClick={handleNext}
+              disabled={!hasNext}
+              size="large"
             />
           </div>
         </div>

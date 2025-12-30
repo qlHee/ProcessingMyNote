@@ -15,7 +15,7 @@ class Annotation(Base):
     content: Mapped[str] = mapped_column(Text)
     x: Mapped[float] = mapped_column(Float)  # X position (percentage)
     y: Mapped[float] = mapped_column(Float)  # Y position (percentage)
-    font_size: Mapped[int] = mapped_column(Integer, default=14, nullable=True)
+    font_size: Mapped[float] = mapped_column(Float, default=1.5, nullable=True)
     color: Mapped[str] = mapped_column(String(20), default="#ff4d4f", nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     

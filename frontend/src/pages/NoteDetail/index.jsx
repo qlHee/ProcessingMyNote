@@ -27,7 +27,7 @@ export default function NoteDetail() {
   const [imageMode, setImageMode] = useState('processed')
   const [activeTab, setActiveTab] = useState('info')
   const [annotationMode, setAnnotationMode] = useState(null)
-  const [fontSize, setFontSize] = useState(14)
+  const [fontSize, setFontSize] = useState(1.5)
   const [form] = Form.useForm()
   const { collapsed, setCollapsed } = useOutletContext()
   const imageRef = useRef(null)
@@ -192,7 +192,9 @@ export default function NoteDetail() {
                 noteId={currentNote.id}
                 imageSrc={notesAPI.getImageUrl(currentNote.id, imageMode)}
                 annotationMode={annotationMode}
+                setAnnotationMode={setAnnotationMode}
                 fontSize={fontSize}
+                setFontSize={setFontSize}
                 onAnnotationChange={() => fetchNote(id)}
               />
             ) : (

@@ -31,7 +31,9 @@ export default function NoteAnnotator({
   const [draggingId, setDraggingId] = useState(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [color, setColor] = useState('#ff4d4f')
+  const [annotationType, setAnnotationType] = useState('text')
   const imageRef = useRef(null)
+  const containerRef = useRef(null)
 
   // Fetch annotations
   useEffect(() => {
@@ -49,7 +51,7 @@ export default function NoteAnnotator({
 
   // Handle click on image to add annotation
   const handleImageClick = (e) => {
-    if (!annotationMode || annotationMode === 'none') return
+    if (!annotationMode) return
     if (e.target !== imageRef.current) return
 
     const rect = imageRef.current.getBoundingClientRect()
@@ -59,6 +61,7 @@ export default function NoteAnnotator({
     if (annotationMode === 'text') {
       setNewAnnotation({ x, y, content: '', type: 'text' })
     }
+    // Other annotation types can be added here
   }
 
   // Save new annotation
@@ -201,30 +204,34 @@ export default function NoteAnnotator({
                   文字
                 </Button>
                 <Button 
+                  type={annotationMode === 'line' ? 'primary' : 'default'}
                   icon={<MinusOutlined />}
                   size="small"
-                  disabled
+                  onClick={() => setAnnotationMode(annotationMode === 'line' ? null : 'line')}
                 >
                   横线
                 </Button>
                 <Button 
+                  type={annotationMode === 'wave' ? 'primary' : 'default'}
                   icon={<LineOutlined rotate={-30} />}
                   size="small"
-                  disabled
+                  onClick={() => setAnnotationMode(annotationMode === 'wave' ? null : 'wave')}
                 >
                   波浪线
                 </Button>
                 <Button 
+                  type={annotationMode === 'arrow' ? 'primary' : 'default'}
                   icon={<ArrowRightOutlined />}
                   size="small"
-                  disabled
+                  onClick={() => setAnnotationMode(annotationMode === 'arrow' ? null : 'arrow')}
                 >
                   箭头
                 </Button>
                 <Button 
+                  type={annotationMode === 'draw' ? 'primary' : 'default'}
                   icon={<BgColorsOutlined />}
                   size="small"
-                  disabled
+                  onClick={() => setAnnotationMode(annotationMode === 'draw' ? null : 'draw')}
                 >
                   涂鸦
                 </Button>
@@ -233,31 +240,32 @@ export default function NoteAnnotator({
           </div>
 
           {/* Font Size Selector */}
-          <div>
-            <Text strong>字体大小</Text>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Text strong style={{ whiteSpace: 'nowrap' }}>字体大小</Text>
             <Select
               value={fontSize}
               onChange={setFontSize}
-              style={{ width: '100%', marginTop: 8 }}
+              style={{ flex: 1 }}
               size="small"
             >
-              <Select.Option value={10}>极小 (10px)</Select.Option>
-              <Select.Option value={12}>小 (12px)</Select.Option>
-              <Select.Option value={14}>中 (14px)</Select.Option>
-              <Select.Option value={16}>大 (16px)</Select.Option>
-              <Select.Option value={18}>特大 (18px)</Select.Option>
-              <Select.Option value={20}>超大 (20px)</Select.Option>
-              <Select.Option value={24}>巨大 (24px)</Select.Option>
+              <Select.Option value={0.8}>0.8</Select.Option>
+              <Select.Option value={1.0}>1.0</Select.Option>
+              <Select.Option value={1.2}>1.2</Select.Option>
+              <Select.Option value={1.5}>1.5</Select.Option>
+              <Select.Option value={1.8}>1.8</Select.Option>
+              <Select.Option value={2.0}>2.0</Select.Option>
+              <Select.Option value={2.5}>2.5</Select.Option>
+              <Select.Option value={3.0}>3.0</Select.Option>
             </Select>
           </div>
 
           {/* Color Selector */}
-          <div>
-            <Text strong>文字颜色</Text>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Text strong style={{ whiteSpace: 'nowrap' }}>文字颜色</Text>
             <Select
               value={color}
               onChange={setColor}
-              style={{ width: '100%', marginTop: 8 }}
+              style={{ flex: 1 }}
               size="small"
             >
               <Select.Option value="#ff4d4f">
@@ -416,7 +424,7 @@ export default function NoteAnnotator({
             style={{ 
               left: `${annotation.x}%`, 
               top: `${annotation.y}%`,
-              fontSize: `${annotation.fontSize || fontSize}px`,
+              fontSize: `${annotation.fontSize || fontSize}vw`,
               color: annotation.color || color,
               cursor: 'move'
             }}

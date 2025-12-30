@@ -30,6 +30,8 @@ export default function NoteAnnotator({
   const [loading, setLoading] = useState(false)
   const [draggingId, setDraggingId] = useState(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const [dragStartPos, setDragStartPos] = useState(null)
+  const [hasDragged, setHasDragged] = useState(false)
   const [color, setColor] = useState('#1890ff')
   const [annotationType, setAnnotationType] = useState('text')
   const imageRef = useRef(null)
@@ -212,6 +214,8 @@ export default function NoteAnnotator({
     const markerY = (annotation.y / 100) * rect.height + rect.top
     
     setDraggingId(id)
+    setDragStartPos({ x: annotation.x, y: annotation.y })
+    setHasDragged(false)
     setDragOffset({
       x: e.clientX - markerX,
       y: e.clientY - markerY
@@ -226,6 +230,11 @@ export default function NoteAnnotator({
     const x = ((e.clientX - dragOffset.x - rect.left) / rect.width) * 100
     const y = ((e.clientY - dragOffset.y - rect.top) / rect.height) * 100
     
+    // Check if actually moved (threshold of 2%)
+    if (dragStartPos && (Math.abs(x - dragStartPos.x) > 2 || Math.abs(y - dragStartPos.y) > 2)) {
+      setHasDragged(true)
+    }
+    
     setAnnotations(annotations.map(a => 
       a.id === draggingId ? { ...a, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) } : a
     ))
@@ -237,24 +246,32 @@ export default function NoteAnnotator({
     const annotation = annotations.find(a => a.id === draggingId)
     if (!annotation) {
       setDraggingId(null)
+      setDragStartPos(null)
+      setHasDragged(false)
       return
     }
     
-    try {
-      const parsed = parseAnnotation(annotation)
-      await annotationsAPI.update(noteId, draggingId, {
-        x: annotation.x,
-        y: annotation.y,
-        content: parsed.type === 'text' ? parsed.data : annotation.content
-      })
-      message.success('位置已更新')
-      onAnnotationChange?.()
-    } catch (error) {
-      console.error('Update position error:', error)
-      message.error('更新位置失败: ' + (error.response?.data?.detail || error.message))
-      fetchAnnotations()
+    // Only update if actually dragged
+    if (hasDragged) {
+      try {
+        const parsed = parseAnnotation(annotation)
+        await annotationsAPI.update(noteId, draggingId, {
+          x: annotation.x,
+          y: annotation.y,
+          content: parsed.type === 'text' ? parsed.data : annotation.content
+        })
+        message.success('位置已更新')
+        onAnnotationChange?.()
+      } catch (error) {
+        console.error('Update position error:', error)
+        message.error('更新位置失败: ' + (error.response?.data?.detail || error.message))
+        fetchAnnotations()
+      }
     }
+    
     setDraggingId(null)
+    setDragStartPos(null)
+    setHasDragged(false)
   }
 
   useEffect(() => {
@@ -594,29 +611,29 @@ export default function NoteAnnotator({
                     autoSize={{ minRows: 2, maxRows: 4 }}
                     autoFocus
                   />
-                  <div style={{ marginTop: '8px', marginBottom: '8px' }}>
-                    <Text strong style={{ fontSize: '12px' }}>字体大小: </Text>
-                    <Select
-                      value={annotation.fontSize || fontSize}
-                      onChange={(val) => {
-                        setAnnotations(annotations.map(a => 
-                          a.id === annotation.id ? { ...a, fontSize: val } : a
-                        ))
-                      }}
-                      size="small"
-                      style={{ width: '80px', marginLeft: '8px' }}
-                    >
-                      <Select.Option value={0.8}>0.8</Select.Option>
-                      <Select.Option value={1.0}>1.0</Select.Option>
-                      <Select.Option value={1.2}>1.2</Select.Option>
-                      <Select.Option value={1.5}>1.5</Select.Option>
-                      <Select.Option value={1.8}>1.8</Select.Option>
-                      <Select.Option value={2.0}>2.0</Select.Option>
-                      <Select.Option value={2.5}>2.5</Select.Option>
-                      <Select.Option value={3.0}>3.0</Select.Option>
-                    </Select>
-                  </div>
-                  <div className="popover-actions">
+                  <div className="popover-actions" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <Text style={{ fontSize: '12px', marginRight: '4px' }}>字号:</Text>
+                      <Select
+                        value={annotation.fontSize || fontSize}
+                        onChange={(val) => {
+                          setAnnotations(annotations.map(a => 
+                            a.id === annotation.id ? { ...a, fontSize: val } : a
+                          ))
+                        }}
+                        size="small"
+                        style={{ width: '60px' }}
+                      >
+                        <Select.Option value={0.8}>0.8</Select.Option>
+                        <Select.Option value={1.0}>1.0</Select.Option>
+                        <Select.Option value={1.2}>1.2</Select.Option>
+                        <Select.Option value={1.5}>1.5</Select.Option>
+                        <Select.Option value={1.8}>1.8</Select.Option>
+                        <Select.Option value={2.0}>2.0</Select.Option>
+                        <Select.Option value={2.5}>2.5</Select.Option>
+                        <Select.Option value={3.0}>3.0</Select.Option>
+                      </Select>
+                    </div>
                     <Button 
                       size="small" 
                       onClick={() => setEditingId(null)}

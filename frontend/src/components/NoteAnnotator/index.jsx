@@ -60,8 +60,78 @@ export default function NoteAnnotator({
 
     if (annotationMode === 'text') {
       setNewAnnotation({ x, y, content: '', type: 'text' })
+    } else if (annotationMode === 'line' || annotationMode === 'arrow') {
+      // Start drawing line/arrow
+      setNewAnnotation({ x, y, x2: x, y2: y, type: annotationMode })
+    } else if (annotationMode === 'draw') {
+      // Start free drawing
+      setNewAnnotation({ points: [{ x, y }], type: 'draw' })
     }
-    // Other annotation types can be added here
+  }
+
+  // Handle mouse move for drawing
+  const handleDrawMove = (e) => {
+    if (!newAnnotation) return
+    if (newAnnotation.type === 'draw' && e.buttons === 1) {
+      const rect = imageRef.current.getBoundingClientRect()
+      const x = ((e.clientX - rect.left) / rect.width) * 100
+      const y = ((e.clientY - rect.top) / rect.height) * 100
+      setNewAnnotation({
+        ...newAnnotation,
+        points: [...newAnnotation.points, { x, y }]
+      })
+    } else if ((newAnnotation.type === 'line' || newAnnotation.type === 'arrow') && e.buttons === 1) {
+      const rect = imageRef.current.getBoundingClientRect()
+      const x2 = ((e.clientX - rect.left) / rect.width) * 100
+      const y2 = ((e.clientY - rect.top) / rect.height) * 100
+      setNewAnnotation({ ...newAnnotation, x2, y2 })
+    }
+  }
+
+  // Handle mouse up for drawing
+  const handleDrawEnd = async () => {
+    if (!newAnnotation) return
+    
+    if (newAnnotation.type === 'draw' && newAnnotation.points.length > 1) {
+      // Save drawing
+      try {
+        const res = await annotationsAPI.create(noteId, {
+          x: newAnnotation.points[0].x,
+          y: newAnnotation.points[0].y,
+          content: JSON.stringify(newAnnotation.points),
+          fontSize: fontSize,
+          color: color,
+        })
+        setAnnotations([...annotations, { ...res.data, type: 'draw' }])
+        setNewAnnotation(null)
+        setAnnotationMode(null)
+        message.success('涂鸦已添加')
+      } catch (error) {
+        console.error('Create drawing error:', error)
+        message.error('添加失败')
+      }
+    } else if ((newAnnotation.type === 'line' || newAnnotation.type === 'arrow') && 
+               (Math.abs(newAnnotation.x2 - newAnnotation.x) > 1 || Math.abs(newAnnotation.y2 - newAnnotation.y) > 1)) {
+      // Save line/arrow
+      try {
+        const res = await annotationsAPI.create(noteId, {
+          x: newAnnotation.x,
+          y: newAnnotation.y,
+          content: JSON.stringify({ x2: newAnnotation.x2, y2: newAnnotation.y2, type: newAnnotation.type }),
+          fontSize: fontSize,
+          color: color,
+        })
+        setAnnotations([...annotations, { ...res.data, type: newAnnotation.type }])
+        setNewAnnotation(null)
+        setAnnotationMode(null)
+        message.success(newAnnotation.type === 'line' ? '横线已添加' : '箭头已添加')
+      } catch (error) {
+        console.error('Create line/arrow error:', error)
+        message.error('添加失败')
+      }
+    } else {
+      setNewAnnotation(null)
+    }
   }
 
   // Save new annotation
@@ -161,15 +231,22 @@ export default function NoteAnnotator({
     if (!draggingId) return
     
     const annotation = annotations.find(a => a.id === draggingId)
+    if (!annotation) {
+      setDraggingId(null)
+      return
+    }
+    
     try {
       await annotationsAPI.update(noteId, draggingId, {
         x: annotation.x,
-        y: annotation.y
+        y: annotation.y,
+        content: annotation.content
       })
       message.success('位置已更新')
     } catch (error) {
       console.error('Update position error:', error)
       message.error('更新位置失败: ' + (error.response?.data?.detail || error.message))
+      fetchAnnotations()
     }
     setDraggingId(null)
   }
@@ -185,6 +262,23 @@ export default function NoteAnnotator({
     }
   }, [draggingId, dragOffset])
 
+  // Add drawing event listeners
+  useEffect(() => {
+    if (newAnnotation && (newAnnotation.type === 'draw' || newAnnotation.type === 'line' || newAnnotation.type === 'arrow')) {
+      const img = imageRef.current
+      if (img) {
+        img.addEventListener('mousemove', handleDrawMove)
+        img.addEventListener('mouseup', handleDrawEnd)
+        img.addEventListener('mouseleave', handleDrawEnd)
+        return () => {
+          img.removeEventListener('mousemove', handleDrawMove)
+          img.removeEventListener('mouseup', handleDrawEnd)
+          img.removeEventListener('mouseleave', handleDrawEnd)
+        }
+      }
+    }
+  }, [newAnnotation])
+
   // Panel mode: render toolbar and list
   if (panelMode) {
     return (
@@ -192,7 +286,16 @@ export default function NoteAnnotator({
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           {/* Toolbar */}
           <div>
-            <Text strong>标注工具</Text>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text strong>标注工具</Text>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                {annotationMode === 'text' && '点击图片添加文字'}
+                {annotationMode === 'line' && '按住鼠标拖动画线'}
+                {annotationMode === 'arrow' && '按住鼠标拖动画箭头'}
+                {annotationMode === 'draw' && '按住鼠标自由涂鸦'}
+                {!annotationMode && '选择一个工具开始标注'}
+              </Text>
+            </div>
             <div style={{ marginTop: 8 }}>
               <Space wrap>
                 <Button 
@@ -336,6 +439,21 @@ export default function NoteAnnotator({
     )
   }
 
+  // Parse annotation content to determine type
+  const parseAnnotation = (annotation) => {
+    try {
+      const parsed = JSON.parse(annotation.content)
+      if (Array.isArray(parsed)) {
+        return { type: 'draw', data: parsed }
+      } else if (parsed.x2 !== undefined && parsed.y2 !== undefined) {
+        return { type: parsed.type || 'line', data: parsed }
+      }
+    } catch (e) {
+      return { type: 'text', data: annotation.content }
+    }
+    return { type: 'text', data: annotation.content }
+  }
+
   // Overlay mode: render on image
   return (
     <div className="note-annotator-overlay">
@@ -345,11 +463,112 @@ export default function NoteAnnotator({
         alt="Note"
         className="note-image"
         onClick={handleImageClick}
-        style={{ cursor: annotationMode === 'text' ? 'crosshair' : 'default' }}
+        onMouseDown={handleImageClick}
+        style={{ cursor: annotationMode ? 'crosshair' : 'default' }}
         draggable={false}
       />
-      {/* Existing annotations */}
-      {annotations.map((annotation) => (
+      
+      {/* SVG overlay for lines, arrows, and drawings */}
+      <svg className="annotation-svg-overlay" style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none'
+      }}>
+        {/* Render line/arrow/draw annotations */}
+        {annotations.map((annotation) => {
+          const parsed = parseAnnotation(annotation)
+          if (parsed.type === 'line' || parsed.type === 'arrow') {
+            const strokeWidth = (annotation.fontSize || fontSize) * 0.3
+            return (
+              <g key={annotation.id}>
+                <line
+                  x1={`${annotation.x}%`}
+                  y1={`${annotation.y}%`}
+                  x2={`${parsed.data.x2}%`}
+                  y2={`${parsed.data.y2}%`}
+                  stroke={annotation.color || color}
+                  strokeWidth={strokeWidth}
+                  strokeLinecap="round"
+                />
+                {parsed.type === 'arrow' && (
+                  <polygon
+                    points={`${parsed.data.x2},${parsed.data.y2} ${parsed.data.x2 - 1},${parsed.data.y2 - 0.5} ${parsed.data.x2 - 1},${parsed.data.y2 + 0.5}`}
+                    fill={annotation.color || color}
+                    transform={`rotate(${Math.atan2(parsed.data.y2 - annotation.y, parsed.data.x2 - annotation.x) * 180 / Math.PI} ${parsed.data.x2} ${parsed.data.y2})`}
+                  />
+                )}
+              </g>
+            )
+          } else if (parsed.type === 'draw') {
+            const points = parsed.data.map(p => `${p.x},${p.y}`).join(' ')
+            const strokeWidth = (annotation.fontSize || fontSize) * 0.2
+            return (
+              <polyline
+                key={annotation.id}
+                points={points}
+                stroke={annotation.color || color}
+                strokeWidth={strokeWidth}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )
+          }
+          return null
+        })}
+        
+        {/* Render preview for new line/arrow/draw */}
+        {newAnnotation && newAnnotation.type === 'line' && (
+          <line
+            x1={`${newAnnotation.x}%`}
+            y1={`${newAnnotation.y}%`}
+            x2={`${newAnnotation.x2}%`}
+            y2={`${newAnnotation.y2}%`}
+            stroke={color}
+            strokeWidth={(fontSize) * 0.3}
+            strokeLinecap="round"
+            strokeDasharray="5,5"
+          />
+        )}
+        {newAnnotation && newAnnotation.type === 'arrow' && (
+          <g>
+            <line
+              x1={`${newAnnotation.x}%`}
+              y1={`${newAnnotation.y}%`}
+              x2={`${newAnnotation.x2}%`}
+              y2={`${newAnnotation.y2}%`}
+              stroke={color}
+              strokeWidth={(fontSize) * 0.3}
+              strokeLinecap="round"
+              strokeDasharray="5,5"
+            />
+            <polygon
+              points={`${newAnnotation.x2},${newAnnotation.y2} ${newAnnotation.x2 - 1},${newAnnotation.y2 - 0.5} ${newAnnotation.x2 - 1},${newAnnotation.y2 + 0.5}`}
+              fill={color}
+              transform={`rotate(${Math.atan2(newAnnotation.y2 - newAnnotation.y, newAnnotation.x2 - newAnnotation.x) * 180 / Math.PI} ${newAnnotation.x2} ${newAnnotation.y2})`}
+            />
+          </g>
+        )}
+        {newAnnotation && newAnnotation.type === 'draw' && newAnnotation.points && (
+          <polyline
+            points={newAnnotation.points.map(p => `${p.x},${p.y}`).join(' ')}
+            stroke={color}
+            strokeWidth={(fontSize) * 0.2}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+      </svg>
+
+      {/* Existing text annotations */}
+      {annotations.map((annotation) => {
+        const parsed = parseAnnotation(annotation)
+        if (parsed.type !== 'text') return null
+        return (
         <Popover
           key={annotation.id}
           trigger="click"
@@ -430,13 +649,14 @@ export default function NoteAnnotator({
             }}
             onMouseDown={(e) => handleDragStart(e, annotation.id)}
           >
-            {annotation.content}
+            {parsed.data}
           </div>
         </Popover>
-      ))}
+        )
+      })}
 
-      {/* New annotation input */}
-      {newAnnotation && (
+      {/* New text annotation input */}
+      {newAnnotation && newAnnotation.type === 'text' && (
         <Popover
           content={
             <div className="annotation-popover">

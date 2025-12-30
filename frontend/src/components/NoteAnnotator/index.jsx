@@ -2,21 +2,34 @@
  * NoteAnnotator - Add annotations on note images
  */
 import { useState, useRef, useEffect } from 'react'
-import { Input, Button, Popover, List, Typography, Empty, message, Popconfirm } from 'antd'
-import { PlusOutlined, DeleteOutlined, EditOutlined, MessageOutlined } from '@ant-design/icons'
+import { Input, Button, Popover, List, Typography, message, Popconfirm, Space, Select, Divider } from 'antd'
+import { 
+  PlusOutlined, DeleteOutlined, EditOutlined, MessageOutlined,
+  MinusOutlined, LineOutlined, ArrowRightOutlined, EditFilled, BgColorsOutlined
+} from '@ant-design/icons'
 import { annotationsAPI } from '../../api'
 import './index.css'
 
 const { Text, Paragraph } = Typography
 const { TextArea } = Input
 
-export default function NoteAnnotator({ noteId, imageSrc, isAnnotating = false, onAnnotationChange }) {
+export default function NoteAnnotator({ 
+  noteId, 
+  imageSrc, 
+  annotationMode, 
+  setAnnotationMode, 
+  fontSize, 
+  setFontSize, 
+  onAnnotationChange,
+  panelMode = false
+}) {
   const [annotations, setAnnotations] = useState([])
   const [newAnnotation, setNewAnnotation] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [editContent, setEditContent] = useState('')
   const [loading, setLoading] = useState(false)
-  const containerRef = useRef(null)
+  const [draggingId, setDraggingId] = useState(null)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const imageRef = useRef(null)
 
   // Fetch annotations
@@ -35,13 +48,16 @@ export default function NoteAnnotator({ noteId, imageSrc, isAnnotating = false, 
 
   // Handle click on image to add annotation
   const handleImageClick = (e) => {
-    if (!isAnnotating) return
+    if (!annotationMode || annotationMode === 'none') return
+    if (e.target !== imageRef.current) return
 
     const rect = imageRef.current.getBoundingClientRect()
     const x = ((e.clientX - rect.left) / rect.width) * 100
     const y = ((e.clientY - rect.top) / rect.height) * 100
 
-    setNewAnnotation({ x, y, content: '' })
+    if (annotationMode === 'text') {
+      setNewAnnotation({ x, y, content: '', type: 'text' })
+    }
   }
 
   // Save new annotation
@@ -57,9 +73,11 @@ export default function NoteAnnotator({ noteId, imageSrc, isAnnotating = false, 
         x: newAnnotation.x,
         y: newAnnotation.y,
         content: content,
+        fontSize: fontSize,
       })
       setAnnotations([...annotations, res.data])
       setNewAnnotation(null)
+      setAnnotationMode(null)
       message.success('标注添加成功')
       onAnnotationChange?.()
     } catch (error) {
@@ -105,12 +123,171 @@ export default function NoteAnnotator({ noteId, imageSrc, isAnnotating = false, 
     }
   }
 
-  // Cancel adding
-  const handleCancelAdd = () => {
-    setIsAdding(false)
-    setNewAnnotation({ x: 0, y: 0, content: '' })
+  // Handle drag start
+  const handleDragStart = (e, id) => {
+    e.stopPropagation()
+    const annotation = annotations.find(a => a.id === id)
+    const rect = imageRef.current.getBoundingClientRect()
+    const markerX = (annotation.x / 100) * rect.width + rect.left
+    const markerY = (annotation.y / 100) * rect.height + rect.top
+    
+    setDraggingId(id)
+    setDragOffset({
+      x: e.clientX - markerX,
+      y: e.clientY - markerY
+    })
   }
 
+  const handleDragMove = (e) => {
+    if (!draggingId) return
+    e.preventDefault()
+    
+    const rect = imageRef.current.getBoundingClientRect()
+    const x = ((e.clientX - dragOffset.x - rect.left) / rect.width) * 100
+    const y = ((e.clientY - dragOffset.y - rect.top) / rect.height) * 100
+    
+    setAnnotations(annotations.map(a => 
+      a.id === draggingId ? { ...a, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) } : a
+    ))
+  }
+
+  const handleDragEnd = async () => {
+    if (!draggingId) return
+    
+    const annotation = annotations.find(a => a.id === draggingId)
+    try {
+      await annotationsAPI.update(noteId, draggingId, {
+        x: annotation.x,
+        y: annotation.y
+      })
+    } catch (error) {
+      message.error('更新位置失败')
+    }
+    setDraggingId(null)
+  }
+
+  useEffect(() => {
+    if (draggingId) {
+      document.addEventListener('mousemove', handleDragMove)
+      document.addEventListener('mouseup', handleDragEnd)
+      return () => {
+        document.removeEventListener('mousemove', handleDragMove)
+        document.removeEventListener('mouseup', handleDragEnd)
+      }
+    }
+  }, [draggingId, dragOffset])
+
+  // Panel mode: render toolbar and list
+  if (panelMode) {
+    return (
+      <div className="annotation-panel">
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          {/* Toolbar */}
+          <div>
+            <Text strong>标注工具</Text>
+            <div style={{ marginTop: 8 }}>
+              <Space wrap>
+                <Button 
+                  type={annotationMode === 'text' ? 'primary' : 'default'}
+                  icon={<EditFilled />}
+                  onClick={() => setAnnotationMode(annotationMode === 'text' ? null : 'text')}
+                  size="small"
+                >
+                  文字
+                </Button>
+                <Button 
+                  icon={<MinusOutlined />}
+                  size="small"
+                  disabled
+                >
+                  横线
+                </Button>
+                <Button 
+                  icon={<LineOutlined rotate={-30} />}
+                  size="small"
+                  disabled
+                >
+                  波浪线
+                </Button>
+                <Button 
+                  icon={<ArrowRightOutlined />}
+                  size="small"
+                  disabled
+                >
+                  箭头
+                </Button>
+                <Button 
+                  icon={<BgColorsOutlined />}
+                  size="small"
+                  disabled
+                >
+                  涂鸦
+                </Button>
+              </Space>
+            </div>
+          </div>
+
+          {/* Font Size Selector */}
+          <div>
+            <Text strong>字体大小</Text>
+            <Select
+              value={fontSize}
+              onChange={setFontSize}
+              style={{ width: '100%', marginTop: 8 }}
+              size="small"
+            >
+              <Select.Option value={12}>小 (12px)</Select.Option>
+              <Select.Option value={14}>中 (14px)</Select.Option>
+              <Select.Option value={16}>大 (16px)</Select.Option>
+              <Select.Option value={18}>特大 (18px)</Select.Option>
+            </Select>
+          </div>
+
+          <Divider style={{ margin: '8px 0' }} />
+
+          {/* Annotations List */}
+          <div>
+            <Text strong>文字标注列表</Text>
+            <List
+              size="small"
+              style={{ marginTop: 8 }}
+              dataSource={annotations.filter(a => a.content)}
+              locale={{ emptyText: '暂无标注' }}
+              renderItem={(annotation) => (
+                <List.Item
+                  actions={[
+                    <Button
+                      key="edit"
+                      type="text"
+                      size="small"
+                      icon={<EditOutlined />}
+                      onClick={() => {
+                        setEditingId(annotation.id)
+                        setEditContent(annotation.content)
+                      }}
+                    />,
+                    <Popconfirm
+                      key="delete"
+                      title="确定删除？"
+                      onConfirm={() => handleDeleteAnnotation(annotation.id)}
+                      okText="删除"
+                      cancelText="取消"
+                    >
+                      <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>,
+                  ]}
+                >
+                  <Text ellipsis style={{ maxWidth: 150 }}>{annotation.content}</Text>
+                </List.Item>
+              )}
+            />
+          </div>
+        </Space>
+      </div>
+    )
+  }
+
+  // Overlay mode: render on image
   return (
     <div className="note-annotator-overlay">
       <img
@@ -119,7 +296,7 @@ export default function NoteAnnotator({ noteId, imageSrc, isAnnotating = false, 
         alt="Note"
         className="note-image"
         onClick={handleImageClick}
-        style={{ cursor: isAnnotating ? 'crosshair' : 'default' }}
+        style={{ cursor: annotationMode === 'text' ? 'crosshair' : 'default' }}
         draggable={false}
       />
       {/* Existing annotations */}
@@ -195,14 +372,20 @@ export default function NoteAnnotator({ noteId, imageSrc, isAnnotating = false, 
         >
           <div
             className="annotation-text-marker"
-            style={{ left: `${annotation.x}%`, top: `${annotation.y}%` }}
+            style={{ 
+              left: `${annotation.x}%`, 
+              top: `${annotation.y}%`,
+              fontSize: `${annotation.fontSize || fontSize}px`,
+              cursor: 'move'
+            }}
+            onMouseDown={(e) => handleDragStart(e, annotation.id)}
           >
             {annotation.content}
           </div>
         </Popover>
       ))}
 
-      {/* New annotation marker */}
+      {/* New annotation input */}
       {newAnnotation && (
         <Popover
           content={
@@ -211,16 +394,22 @@ export default function NoteAnnotator({ noteId, imageSrc, isAnnotating = false, 
                 placeholder="输入标注内容..."
                 rows={3}
                 autoFocus
-                onPressEnter={(e) => {
-                  if (!e.shiftKey) {
-                    e.preventDefault()
-                    handleSaveAnnotation(e.target.value)
-                  }
-                }}
+                onChange={(e) => setNewAnnotation({ ...newAnnotation, content: e.target.value })}
               />
               <div className="popover-actions" style={{ marginTop: '8px' }}>
-                <Button size="small" onClick={() => setNewAnnotation(null)}>
+                <Button size="small" onClick={() => {
+                  setNewAnnotation(null)
+                  setAnnotationMode(null)
+                }}>
                   取消
+                </Button>
+                <Button 
+                  type="primary" 
+                  size="small" 
+                  onClick={() => handleSaveAnnotation(newAnnotation.content)}
+                  loading={loading}
+                >
+                  确定
                 </Button>
               </div>
             </div>

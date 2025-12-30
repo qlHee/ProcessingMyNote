@@ -13,33 +13,46 @@
   object-fit: contain;
   border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  user-select: none;
+}
+
+/* Annotation Panel */
+.annotation-panel {
+  padding: 0;
 }
 
 /* Text Annotation Markers */
 .annotation-text-marker {
   position: absolute;
   transform: translate(-50%, -50%);
-  padding: 4px 8px;
-  background: rgba(22, 119, 255, 0.9);
-  color: #fff;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  padding: 2px 4px;
+  background: transparent;
+  color: #ff4d4f;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: move;
   transition: all 0.2s;
   z-index: 10;
-  max-width: 200px;
+  max-width: 300px;
   word-break: break-word;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: pre-wrap;
+  text-shadow: 
+    -1px -1px 0 #fff,
+    1px -1px 0 #fff,
+    -1px 1px 0 #fff,
+    1px 1px 0 #fff,
+    0 0 3px rgba(255, 255, 255, 0.8);
+  user-select: none;
 }
 
 .annotation-text-marker:hover {
-  transform: translate(-50%, -50%) scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  background: rgba(22, 119, 255, 1);
+  color: #ff7875;
+  text-shadow: 
+    -1px -1px 0 #fff,
+    1px -1px 0 #fff,
+    -1px 1px 0 #fff,
+    1px 1px 0 #fff,
+    0 0 5px rgba(255, 255, 255, 1);
 }
 
 .annotation-text-marker.new {
@@ -53,6 +66,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
+  color: #fff;
+  text-shadow: none;
+  cursor: crosshair;
 }
 
 .annotation-text-marker.new:hover {

@@ -26,7 +26,8 @@ export default function NoteDetail() {
   const navigate = useNavigate()
   const [imageMode, setImageMode] = useState('processed')
   const [activeTab, setActiveTab] = useState('info')
-  const [isAnnotating, setIsAnnotating] = useState(false)
+  const [annotationMode, setAnnotationMode] = useState(null)
+  const [fontSize, setFontSize] = useState(14)
   const [form] = Form.useForm()
   const { collapsed, setCollapsed } = useOutletContext()
 
@@ -34,9 +35,11 @@ export default function NoteDetail() {
   const { folders } = useFoldersStore()
   const { tags } = useTagsStore()
 
-  // When switching to annotate tab, enable annotation mode
+  // When switching away from annotate tab, disable annotation mode
   useEffect(() => {
-    setIsAnnotating(activeTab === 'annotate')
+    if (activeTab !== 'annotate') {
+      setAnnotationMode(null)
+    }
   }, [activeTab])
 
   // Get current note index in the notes list
@@ -186,7 +189,8 @@ export default function NoteDetail() {
             <NoteAnnotator
               noteId={currentNote.id}
               imageSrc={notesAPI.getImageUrl(currentNote.id, imageMode)}
-              isAnnotating={isAnnotating}
+              annotationMode={annotationMode}
+              fontSize={fontSize}
               onAnnotationChange={() => fetchNote(id)}
             />
             <Button
@@ -261,9 +265,16 @@ export default function NoteDetail() {
                 key: 'annotate',
                 label: <><HighlightOutlined /> 标注</>,
                 children: (
-                  <div style={{ padding: '16px 0', textAlign: 'center', color: '#999' }}>
-                    点击左侧图片添加标注
-                  </div>
+                  <NoteAnnotator
+                    noteId={currentNote.id}
+                    imageSrc={notesAPI.getImageUrl(currentNote.id, imageMode)}
+                    annotationMode={annotationMode}
+                    setAnnotationMode={setAnnotationMode}
+                    fontSize={fontSize}
+                    setFontSize={setFontSize}
+                    onAnnotationChange={() => fetchNote(id)}
+                    panelMode={true}
+                  />
                 ),
               },
             ]}

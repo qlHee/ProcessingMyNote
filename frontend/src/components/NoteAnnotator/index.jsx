@@ -2,10 +2,10 @@
  * NoteAnnotator - Add annotations on note images
  */
 import { useState, useRef, useEffect } from 'react'
-import { Input, Button, Popover, List, Typography, message, Popconfirm, Space, Select, Divider } from 'antd'
+import { Input, Button, Popover, Typography, message, Popconfirm, Select } from 'antd'
 import { 
-  PlusOutlined, DeleteOutlined, EditOutlined, MessageOutlined,
-  MinusOutlined, LineOutlined, ArrowRightOutlined, EditFilled, BgColorsOutlined
+  DeleteOutlined, EditOutlined,
+  MinusOutlined, ArrowRightOutlined, EditFilled, BgColorsOutlined
 } from '@ant-design/icons'
 import { annotationsAPI } from '../../api'
 import './index.css'
@@ -337,200 +337,155 @@ export default function NoteAnnotator({
     return { type: 'text', data: annotation.content }
   }
 
+  // Color options
+  const colorOptions = [
+    { value: '#1890ff', label: '蓝' },
+    { value: '#ff4d4f', label: '红' },
+    { value: '#52c41a', label: '绿' },
+    { value: '#faad14', label: '橙' },
+    { value: '#722ed1', label: '紫' },
+    { value: '#000000', label: '黑' },
+  ]
+
   // Panel mode: render toolbar and list
   if (panelMode) {
     return (
       <div className="annotation-panel">
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          {/* Toolbar */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text strong>标注工具</Text>
-              <Text type="secondary" style={{ fontSize: '12px' }}>
-                {annotationMode === 'text' && '点击图片添加文字'}
-                {annotationMode === 'line' && '按住鼠标拖动画线'}
-                {annotationMode === 'arrow' && '按住鼠标拖动画箭头'}
-                {annotationMode === 'draw' && '按住鼠标自由涂鸦'}
-                {!annotationMode && '选择一个工具开始标注'}
-              </Text>
-            </div>
-            <div style={{ marginTop: 8 }}>
-              <Space wrap>
-                <Button 
-                  type={annotationMode === 'text' ? 'primary' : 'default'}
-                  icon={<EditFilled />}
-                  onClick={() => setAnnotationMode(annotationMode === 'text' ? null : 'text')}
-                  size="small"
-                >
-                  文字
-                </Button>
-                <Button 
-                  type={annotationMode === 'line' ? 'primary' : 'default'}
-                  icon={<MinusOutlined />}
-                  size="small"
-                  onClick={() => setAnnotationMode(annotationMode === 'line' ? null : 'line')}
-                >
-                  横线
-                </Button>
-                <Button 
-                  type={annotationMode === 'wave' ? 'primary' : 'default'}
-                  icon={<LineOutlined rotate={-30} />}
-                  size="small"
-                  onClick={() => setAnnotationMode(annotationMode === 'wave' ? null : 'wave')}
-                >
-                  波浪线
-                </Button>
-                <Button 
-                  type={annotationMode === 'arrow' ? 'primary' : 'default'}
-                  icon={<ArrowRightOutlined />}
-                  size="small"
-                  onClick={() => setAnnotationMode(annotationMode === 'arrow' ? null : 'arrow')}
-                >
-                  箭头
-                </Button>
-                <Button 
-                  type={annotationMode === 'draw' ? 'primary' : 'default'}
-                  icon={<BgColorsOutlined />}
-                  size="small"
-                  onClick={() => setAnnotationMode(annotationMode === 'draw' ? null : 'draw')}
-                >
-                  涂鸦
-                </Button>
-              </Space>
-            </div>
+        {/* Tool buttons in a grid */}
+        <div className="annotation-tools">
+          <div 
+            className={`tool-btn ${annotationMode === 'text' ? 'active' : ''}`}
+            onClick={() => setAnnotationMode(annotationMode === 'text' ? null : 'text')}
+          >
+            <EditFilled />
+            <span>文字</span>
           </div>
-
-          {/* Color Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Text strong style={{ whiteSpace: 'nowrap' }}>标注颜色</Text>
-            <Select
-              value={color}
-              onChange={setColor}
-              style={{ flex: 1 }}
-              size="small"
-            >
-              <Select.Option value="#1890ff">
-                <span style={{ color: '#1890ff' }}>●</span> 蓝色
-              </Select.Option>
-              <Select.Option value="#ff6b6b">
-                <span style={{ color: '#ff6b6b' }}>●</span> 红色
-              </Select.Option>
-              <Select.Option value="#52c41a">
-                <span style={{ color: '#52c41a' }}>●</span> 绿色
-              </Select.Option>
-              <Select.Option value="#ffa940">
-                <span style={{ color: '#ffa940' }}>●</span> 橙色
-              </Select.Option>
-              <Select.Option value="#9254de">
-                <span style={{ color: '#9254de' }}>●</span> 紫色
-              </Select.Option>
-              <Select.Option value="#2f3542">
-                <span style={{ color: '#2f3542' }}>●</span> 黑色
-              </Select.Option>
-              <Select.Option value="#ffffff">
-                <span style={{ color: '#ffffff', textShadow: '0 0 1px #000' }}>●</span> 白色
-              </Select.Option>
-            </Select>
+          <div 
+            className={`tool-btn ${annotationMode === 'line' ? 'active' : ''}`}
+            onClick={() => setAnnotationMode(annotationMode === 'line' ? null : 'line')}
+          >
+            <MinusOutlined />
+            <span>直线</span>
           </div>
+          <div 
+            className={`tool-btn ${annotationMode === 'wave' ? 'active' : ''}`}
+            onClick={() => setAnnotationMode(annotationMode === 'wave' ? null : 'wave')}
+          >
+            <span style={{ fontSize: '16px' }}>〰</span>
+            <span>波浪</span>
+          </div>
+          <div 
+            className={`tool-btn ${annotationMode === 'arrow' ? 'active' : ''}`}
+            onClick={() => setAnnotationMode(annotationMode === 'arrow' ? null : 'arrow')}
+          >
+            <ArrowRightOutlined />
+            <span>箭头</span>
+          </div>
+          <div 
+            className={`tool-btn ${annotationMode === 'draw' ? 'active' : ''}`}
+            onClick={() => setAnnotationMode(annotationMode === 'draw' ? null : 'draw')}
+          >
+            <BgColorsOutlined />
+            <span>涂鸦</span>
+          </div>
+        </div>
 
-          <Divider style={{ margin: '8px 0' }} />
+        {/* Hint text */}
+        {annotationMode && (
+          <div className="annotation-hint">
+            {annotationMode === 'text' && '💡 点击图片添加文字'}
+            {annotationMode === 'line' && '💡 拖动绘制直线'}
+            {annotationMode === 'wave' && '💡 拖动绘制波浪线'}
+            {annotationMode === 'arrow' && '💡 拖动绘制箭头'}
+            {annotationMode === 'draw' && '💡 自由绘制涂鸦'}
+          </div>
+        )}
 
-          {/* Annotations List */}
-          <div>
-            <Text strong>文字标注列表</Text>
-            <List
-              size="small"
-              style={{ marginTop: 8 }}
-              dataSource={annotations.filter(a => {
-                const parsed = parseAnnotation(a)
-                return parsed.type === 'text'
-              })}
-              locale={{ emptyText: '暂无文字标注' }}
-              renderItem={(annotation) => {
+        {/* Color palette */}
+        <div className="color-palette">
+          {colorOptions.map(c => (
+            <div
+              key={c.value}
+              className={`color-dot ${color === c.value ? 'active' : ''}`}
+              style={{ backgroundColor: c.value }}
+              onClick={() => setColor(c.value)}
+              title={c.label}
+            />
+          ))}
+        </div>
+
+        {/* Annotations List */}
+        <div className="annotation-list-section">
+          <div className="section-title">文字标注</div>
+          {annotations.filter(a => parseAnnotation(a).type === 'text').length === 0 ? (
+            <div className="empty-hint">暂无文字标注</div>
+          ) : (
+            <div className="annotation-list">
+              {annotations.filter(a => parseAnnotation(a).type === 'text').map(annotation => {
                 const parsed = parseAnnotation(annotation)
                 
-                // Show edit form if editing this annotation
                 if (editingId === annotation.id) {
                   return (
-                    <List.Item>
-                      <div style={{ width: '100%' }}>
-                        <TextArea
-                          value={editContent}
-                          onChange={(e) => setEditContent(e.target.value)}
-                          autoSize={{ minRows: 2, maxRows: 4 }}
-                          autoFocus
-                          style={{ marginBottom: '8px' }}
-                        />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <Text style={{ fontSize: '12px', marginRight: '4px' }}>字号:</Text>
-                            <Select
-                              value={annotation.fontSize || fontSize}
-                              onChange={(val) => {
-                                setAnnotations(annotations.map(a => 
-                                  a.id === annotation.id ? { ...a, fontSize: val } : a
-                                ))
-                              }}
-                              size="small"
-                              style={{ width: '60px' }}
-                            >
-                              <Select.Option value={0.8}>0.8</Select.Option>
-                              <Select.Option value={1.0}>1.0</Select.Option>
-                              <Select.Option value={1.2}>1.2</Select.Option>
-                              <Select.Option value={1.5}>1.5</Select.Option>
-                              <Select.Option value={1.8}>1.8</Select.Option>
-                              <Select.Option value={2.0}>2.0</Select.Option>
-                              <Select.Option value={2.5}>2.5</Select.Option>
-                              <Select.Option value={3.0}>3.0</Select.Option>
-                            </Select>
-                          </div>
-                          <Button size="small" onClick={() => setEditingId(null)}>取消</Button>
-                          <Button 
-                            type="primary" 
-                            size="small"
-                            loading={loading}
-                            onClick={() => handleUpdateAnnotation(annotation.id)}
-                          >
-                            保存
-                          </Button>
-                        </div>
+                    <div key={annotation.id} className="annotation-edit-form">
+                      <TextArea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        autoSize={{ minRows: 2, maxRows: 4 }}
+                        autoFocus
+                        placeholder="输入标注内容"
+                      />
+                      <div className="edit-actions">
+                        <Select
+                          value={annotation.fontSize || fontSize}
+                          onChange={(val) => {
+                            setAnnotations(annotations.map(a => 
+                              a.id === annotation.id ? { ...a, fontSize: val } : a
+                            ))
+                          }}
+                          size="small"
+                          style={{ width: '70px' }}
+                        >
+                          <Select.Option value={0.8}>0.8x</Select.Option>
+                          <Select.Option value={1.0}>1.0x</Select.Option>
+                          <Select.Option value={1.2}>1.2x</Select.Option>
+                          <Select.Option value={1.5}>1.5x</Select.Option>
+                          <Select.Option value={2.0}>2.0x</Select.Option>
+                        </Select>
+                        <Button size="small" onClick={() => setEditingId(null)}>取消</Button>
+                        <Button type="primary" size="small" loading={loading} onClick={() => handleUpdateAnnotation(annotation.id)}>保存</Button>
                       </div>
-                    </List.Item>
+                    </div>
                   )
                 }
                 
                 return (
-                <List.Item
-                  actions={[
-                    <Button
-                      key="edit"
-                      type="text"
-                      size="small"
-                      icon={<EditOutlined />}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setEditingId(annotation.id)
-                        setEditContent(annotation.content)
-                      }}
-                    />,
-                    <Popconfirm
-                      key="delete"
-                      title="确定删除？"
-                      onConfirm={() => handleDeleteAnnotation(annotation.id)}
-                      okText="删除"
-                      cancelText="取消"
-                    >
-                      <Button type="text" size="small" danger icon={<DeleteOutlined />} />
-                    </Popconfirm>,
-                  ]}
-                >
-                  <Text ellipsis style={{ maxWidth: 150 }}>{parsed.data}</Text>
-                </List.Item>
+                  <div key={annotation.id} className="annotation-item">
+                    <span className="annotation-text">{parsed.data}</span>
+                    <div className="annotation-actions">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<EditOutlined />}
+                        onClick={() => {
+                          setEditingId(annotation.id)
+                          setEditContent(annotation.content)
+                        }}
+                      />
+                      <Popconfirm
+                        title="确定删除？"
+                        onConfirm={() => handleDeleteAnnotation(annotation.id)}
+                        okText="删除"
+                        cancelText="取消"
+                      >
+                        <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+                      </Popconfirm>
+                    </div>
+                  </div>
                 )
-              }}
-            />
-          </div>
-        </Space>
+              })}
+            </div>
+          )}
+        </div>
       </div>
     )
   }

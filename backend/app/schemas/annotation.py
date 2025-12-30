@@ -27,9 +27,10 @@ class AnnotationResponse(BaseModel):
     content: str
     x: float
     y: float
-    fontSize: float | None = 1.5
+    fontSize: float | None = Field(default=1.5, alias="font_size")
     color: str | None = "#1890ff"
     created_at: datetime
 
     class Config:
         from_attributes = True
+        populate_by_name = True

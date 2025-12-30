@@ -28,6 +28,7 @@ export default function NoteDetail() {
   const [activeTab, setActiveTab] = useState('info')
   const [annotationMode, setAnnotationMode] = useState(null)
   const [fontSize, setFontSize] = useState(1.5)
+  const [color, setColor] = useState('#1890ff')
   const [form] = Form.useForm()
   const { collapsed, setCollapsed } = useOutletContext()
   const imageRef = useRef(null)

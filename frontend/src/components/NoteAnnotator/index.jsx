@@ -30,7 +30,7 @@ export default function NoteAnnotator({
   const [loading, setLoading] = useState(false)
   const [draggingId, setDraggingId] = useState(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const [color, setColor] = useState('#ff4d4f')
+  const [color, setColor] = useState('#1890ff')
   const [annotationType, setAnnotationType] = useState('text')
   const imageRef = useRef(null)
   const containerRef = useRef(null)
@@ -371,23 +371,23 @@ export default function NoteAnnotator({
               style={{ flex: 1 }}
               size="small"
             >
-              <Select.Option value="#ff4d4f">
-                <span style={{ color: '#ff4d4f' }}>●</span> 红色
-              </Select.Option>
               <Select.Option value="#1890ff">
                 <span style={{ color: '#1890ff' }}>●</span> 蓝色
+              </Select.Option>
+              <Select.Option value="#ff6b6b">
+                <span style={{ color: '#ff6b6b' }}>●</span> 红色
               </Select.Option>
               <Select.Option value="#52c41a">
                 <span style={{ color: '#52c41a' }}>●</span> 绿色
               </Select.Option>
-              <Select.Option value="#faad14">
-                <span style={{ color: '#faad14' }}>●</span> 黄色
+              <Select.Option value="#ffa940">
+                <span style={{ color: '#ffa940' }}>●</span> 橙色
               </Select.Option>
-              <Select.Option value="#722ed1">
-                <span style={{ color: '#722ed1' }}>●</span> 紫色
+              <Select.Option value="#9254de">
+                <span style={{ color: '#9254de' }}>●</span> 紫色
               </Select.Option>
-              <Select.Option value="#000000">
-                <span style={{ color: '#000000' }}>●</span> 黑色
+              <Select.Option value="#2f3542">
+                <span style={{ color: '#2f3542' }}>●</span> 黑色
               </Select.Option>
               <Select.Option value="#ffffff">
                 <span style={{ color: '#ffffff', textShadow: '0 0 1px #000' }}>●</span> 白色
@@ -403,9 +403,18 @@ export default function NoteAnnotator({
             <List
               size="small"
               style={{ marginTop: 8 }}
-              dataSource={annotations.filter(a => a.content)}
+              dataSource={annotations}
               locale={{ emptyText: '暂无标注' }}
-              renderItem={(annotation) => (
+              renderItem={(annotation) => {
+                const parsed = parseAnnotation(annotation)
+                const displayText = parsed.type === 'text' 
+                  ? parsed.data 
+                  : parsed.type === 'line' 
+                  ? '横线标注' 
+                  : parsed.type === 'arrow' 
+                  ? '箭头标注' 
+                  : '涂鸦标注'
+                return (
                 <List.Item
                   actions={[
                     <Button
@@ -429,9 +438,10 @@ export default function NoteAnnotator({
                     </Popconfirm>,
                   ]}
                 >
-                  <Text ellipsis style={{ maxWidth: 150 }}>{annotation.content}</Text>
+                  <Text ellipsis style={{ maxWidth: 150 }}>{displayText}</Text>
                 </List.Item>
-              )}
+                )
+              }}
             />
           </div>
         </Space>
@@ -475,15 +485,15 @@ export default function NoteAnnotator({
         left: 0,
         width: '100%',
         height: '100%',
-        pointerEvents: 'none'
+        pointerEvents: 'auto'
       }}>
         {/* Render line/arrow/draw annotations */}
         {annotations.map((annotation) => {
           const parsed = parseAnnotation(annotation)
           if (parsed.type === 'line' || parsed.type === 'arrow') {
-            const strokeWidth = (annotation.fontSize || fontSize) * 0.3
+            const strokeWidth = (annotation.fontSize || fontSize) * 1.2
             return (
-              <g key={annotation.id}>
+              <g key={annotation.id} className="annotation-graphic" style={{ cursor: 'pointer' }}>
                 <line
                   x1={`${annotation.x}%`}
                   y1={`${annotation.y}%`}
@@ -492,19 +502,33 @@ export default function NoteAnnotator({
                   stroke={annotation.color || color}
                   strokeWidth={strokeWidth}
                   strokeLinecap="round"
+                  style={{ pointerEvents: 'stroke' }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (window.confirm('确定删除此标注？')) {
+                      handleDeleteAnnotation(annotation.id)
+                    }
+                  }}
                 />
                 {parsed.type === 'arrow' && (
                   <polygon
-                    points={`${parsed.data.x2},${parsed.data.y2} ${parsed.data.x2 - 1},${parsed.data.y2 - 0.5} ${parsed.data.x2 - 1},${parsed.data.y2 + 0.5}`}
+                    points={`${parsed.data.x2},${parsed.data.y2} ${parsed.data.x2 - 2},${parsed.data.y2 - 1} ${parsed.data.x2 - 2},${parsed.data.y2 + 1}`}
                     fill={annotation.color || color}
                     transform={`rotate(${Math.atan2(parsed.data.y2 - annotation.y, parsed.data.x2 - annotation.x) * 180 / Math.PI} ${parsed.data.x2} ${parsed.data.y2})`}
+                    style={{ pointerEvents: 'auto' }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (window.confirm('确定删除此标注？')) {
+                        handleDeleteAnnotation(annotation.id)
+                      }
+                    }}
                   />
                 )}
               </g>
             )
           } else if (parsed.type === 'draw') {
             const points = parsed.data.map(p => `${p.x},${p.y}`).join(' ')
-            const strokeWidth = (annotation.fontSize || fontSize) * 0.2
+            const strokeWidth = (annotation.fontSize || fontSize) * 0.8
             return (
               <polyline
                 key={annotation.id}
@@ -514,6 +538,13 @@ export default function NoteAnnotator({
                 fill="none"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (window.confirm('确定删除此标注？')) {
+                    handleDeleteAnnotation(annotation.id)
+                  }
+                }}
               />
             )
           }
@@ -528,7 +559,7 @@ export default function NoteAnnotator({
             x2={`${newAnnotation.x2}%`}
             y2={`${newAnnotation.y2}%`}
             stroke={color}
-            strokeWidth={(fontSize) * 0.3}
+            strokeWidth={(fontSize) * 1.2}
             strokeLinecap="round"
             strokeDasharray="5,5"
           />
@@ -541,12 +572,12 @@ export default function NoteAnnotator({
               x2={`${newAnnotation.x2}%`}
               y2={`${newAnnotation.y2}%`}
               stroke={color}
-              strokeWidth={(fontSize) * 0.3}
+              strokeWidth={(fontSize) * 1.2}
               strokeLinecap="round"
               strokeDasharray="5,5"
             />
             <polygon
-              points={`${newAnnotation.x2},${newAnnotation.y2} ${newAnnotation.x2 - 1},${newAnnotation.y2 - 0.5} ${newAnnotation.x2 - 1},${newAnnotation.y2 + 0.5}`}
+              points={`${newAnnotation.x2},${newAnnotation.y2} ${newAnnotation.x2 - 2},${newAnnotation.y2 - 1} ${newAnnotation.x2 - 2},${newAnnotation.y2 + 1}`}
               fill={color}
               transform={`rotate(${Math.atan2(newAnnotation.y2 - newAnnotation.y, newAnnotation.x2 - newAnnotation.x) * 180 / Math.PI} ${newAnnotation.x2} ${newAnnotation.y2})`}
             />
@@ -556,7 +587,7 @@ export default function NoteAnnotator({
           <polyline
             points={newAnnotation.points.map(p => `${p.x},${p.y}`).join(' ')}
             stroke={color}
-            strokeWidth={(fontSize) * 0.2}
+            strokeWidth={(fontSize) * 0.8}
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -647,7 +678,10 @@ export default function NoteAnnotator({
               color: annotation.color || color,
               cursor: 'move'
             }}
-            onMouseDown={(e) => handleDragStart(e, annotation.id)}
+            onMouseDown={(e) => {
+              e.stopPropagation()
+              handleDragStart(e, annotation.id)
+            }}
           >
             {parsed.data}
           </div>

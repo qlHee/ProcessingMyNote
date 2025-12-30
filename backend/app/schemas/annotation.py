@@ -10,7 +10,7 @@ class AnnotationCreate(BaseModel):
     x: float = Field(..., ge=0, le=100)
     y: float = Field(..., ge=0, le=100)
     fontSize: float = Field(default=1.5)
-    color: str = Field(default="#ff4d4f")
+    color: str = Field(default="#1890ff")
 
 
 class AnnotationUpdate(BaseModel):
@@ -28,7 +28,7 @@ class AnnotationResponse(BaseModel):
     x: float
     y: float
     fontSize: float | None = 1.5
-    color: str | None = "#ff4d4f"
+    color: str | None = "#1890ff"
     created_at: datetime
 
     class Config:

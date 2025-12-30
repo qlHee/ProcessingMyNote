@@ -419,17 +419,13 @@ export default function NoteAnnotator({
             <List
               size="small"
               style={{ marginTop: 8 }}
-              dataSource={annotations}
-              locale={{ emptyText: '暂无标注' }}
+              dataSource={annotations.filter(a => {
+                const parsed = parseAnnotation(a)
+                return parsed.type === 'text'
+              })}
+              locale={{ emptyText: '暂无文字标注' }}
               renderItem={(annotation) => {
                 const parsed = parseAnnotation(annotation)
-                const displayText = parsed.type === 'text' 
-                  ? parsed.data 
-                  : parsed.type === 'line' 
-                  ? '横线标注' 
-                  : parsed.type === 'arrow' 
-                  ? '箭头标注' 
-                  : '涂鸦标注'
                 return (
                 <List.Item
                   actions={[
@@ -454,7 +450,7 @@ export default function NoteAnnotator({
                     </Popconfirm>,
                   ]}
                 >
-                  <Text ellipsis style={{ maxWidth: 150 }}>{displayText}</Text>
+                  <Text ellipsis style={{ maxWidth: 150 }}>{parsed.data}</Text>
                 </List.Item>
                 )
               }}
@@ -480,30 +476,30 @@ export default function NoteAnnotator({
       />
       
       {/* SVG overlay for lines, arrows, and drawings */}
-      <svg className="annotation-svg-overlay" style={{
+      <svg className="annotation-svg-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" style={{
         position: 'absolute',
         top: 0,
         left: 0,
         width: '100%',
         height: '100%',
-        pointerEvents: 'auto'
+        pointerEvents: 'none'
       }}>
         {/* Render line/arrow/draw annotations */}
         {annotations.map((annotation) => {
           const parsed = parseAnnotation(annotation)
           if (parsed.type === 'line' || parsed.type === 'arrow') {
-            const strokeWidth = (annotation.fontSize || fontSize) * 1.2
+            const strokeWidth = (annotation.fontSize || fontSize) * 0.15
             return (
-              <g key={annotation.id} className="annotation-graphic" style={{ cursor: 'pointer' }}>
+              <g key={annotation.id} className="annotation-graphic">
                 <line
-                  x1={`${annotation.x}%`}
-                  y1={`${annotation.y}%`}
-                  x2={`${parsed.data.x2}%`}
-                  y2={`${parsed.data.y2}%`}
+                  x1={annotation.x}
+                  y1={annotation.y}
+                  x2={parsed.data.x2}
+                  y2={parsed.data.y2}
                   stroke={annotation.color || color}
                   strokeWidth={strokeWidth}
                   strokeLinecap="round"
-                  style={{ pointerEvents: 'stroke' }}
+                  style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
                   onClick={(e) => {
                     e.stopPropagation()
                     if (window.confirm('确定删除此标注？')) {
@@ -513,10 +509,10 @@ export default function NoteAnnotator({
                 />
                 {parsed.type === 'arrow' && (
                   <polygon
-                    points={`${parsed.data.x2},${parsed.data.y2} ${parsed.data.x2 - 2},${parsed.data.y2 - 1} ${parsed.data.x2 - 2},${parsed.data.y2 + 1}`}
+                    points={`${parsed.data.x2},${parsed.data.y2} ${parsed.data.x2 - 0.8},${parsed.data.y2 - 0.4} ${parsed.data.x2 - 0.8},${parsed.data.y2 + 0.4}`}
                     fill={annotation.color || color}
                     transform={`rotate(${Math.atan2(parsed.data.y2 - annotation.y, parsed.data.x2 - annotation.x) * 180 / Math.PI} ${parsed.data.x2} ${parsed.data.y2})`}
-                    style={{ pointerEvents: 'auto' }}
+                    style={{ pointerEvents: 'auto', cursor: 'pointer' }}
                     onClick={(e) => {
                       e.stopPropagation()
                       if (window.confirm('确定删除此标注？')) {
@@ -529,7 +525,7 @@ export default function NoteAnnotator({
             )
           } else if (parsed.type === 'draw') {
             const points = parsed.data.map(p => `${p.x},${p.y}`).join(' ')
-            const strokeWidth = (annotation.fontSize || fontSize) * 0.8
+            const strokeWidth = (annotation.fontSize || fontSize) * 0.1
             return (
               <polyline
                 key={annotation.id}
@@ -555,30 +551,30 @@ export default function NoteAnnotator({
         {/* Render preview for new line/arrow/draw */}
         {newAnnotation && newAnnotation.type === 'line' && (
           <line
-            x1={`${newAnnotation.x}%`}
-            y1={`${newAnnotation.y}%`}
-            x2={`${newAnnotation.x2}%`}
-            y2={`${newAnnotation.y2}%`}
+            x1={newAnnotation.x}
+            y1={newAnnotation.y}
+            x2={newAnnotation.x2}
+            y2={newAnnotation.y2}
             stroke={color}
-            strokeWidth={(fontSize) * 1.2}
+            strokeWidth={(fontSize) * 0.15}
             strokeLinecap="round"
-            strokeDasharray="5,5"
+            strokeDasharray="0.5,0.5"
           />
         )}
         {newAnnotation && newAnnotation.type === 'arrow' && (
           <g>
             <line
-              x1={`${newAnnotation.x}%`}
-              y1={`${newAnnotation.y}%`}
-              x2={`${newAnnotation.x2}%`}
-              y2={`${newAnnotation.y2}%`}
+              x1={newAnnotation.x}
+              y1={newAnnotation.y}
+              x2={newAnnotation.x2}
+              y2={newAnnotation.y2}
               stroke={color}
-              strokeWidth={(fontSize) * 1.2}
+              strokeWidth={(fontSize) * 0.15}
               strokeLinecap="round"
-              strokeDasharray="5,5"
+              strokeDasharray="0.5,0.5"
             />
             <polygon
-              points={`${newAnnotation.x2},${newAnnotation.y2} ${newAnnotation.x2 - 2},${newAnnotation.y2 - 1} ${newAnnotation.x2 - 2},${newAnnotation.y2 + 1}`}
+              points={`${newAnnotation.x2},${newAnnotation.y2} ${newAnnotation.x2 - 0.8},${newAnnotation.y2 - 0.4} ${newAnnotation.x2 - 0.8},${newAnnotation.y2 + 0.4}`}
               fill={color}
               transform={`rotate(${Math.atan2(newAnnotation.y2 - newAnnotation.y, newAnnotation.x2 - newAnnotation.x) * 180 / Math.PI} ${newAnnotation.x2} ${newAnnotation.y2})`}
             />
@@ -588,7 +584,7 @@ export default function NoteAnnotator({
           <polyline
             points={newAnnotation.points.map(p => `${p.x},${p.y}`).join(' ')}
             stroke={color}
-            strokeWidth={(fontSize) * 0.8}
+            strokeWidth={(fontSize) * 0.1}
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"

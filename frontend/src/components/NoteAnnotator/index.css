@@ -1,67 +1,62 @@
-.note-annotator {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.annotator-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.annotation-count {
-  margin-left: auto;
-}
-
-.annotator-container {
+.note-annotator-overlay {
   position: relative;
-  flex: 1;
-  overflow: auto;
-  background: #fafafa;
-  border-radius: 8px;
-  cursor: default;
-}
-
-.annotator-container.adding {
-  cursor: crosshair;
-}
-
-.annotator-image {
-  display: block;
-  max-width: 100%;
-  border-radius: 4px;
-}
-
-/* Annotation Markers */
-.annotation-marker {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  width: 28px;
-  height: 28px;
-  background: #1677ff;
-  border: 2px solid #fff;
-  border-radius: 50%;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.note-annotator-overlay .note-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Text Annotation Markers */
+.annotation-text-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 4px 8px;
+  background: rgba(22, 119, 255, 0.9);
+  color: #fff;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.2s;
   z-index: 10;
+  max-width: 200px;
+  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.annotation-marker:hover {
-  transform: translate(-50%, -50%) scale(1.1);
+.annotation-text-marker:hover {
+  transform: translate(-50%, -50%) scale(1.05);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  background: rgba(22, 119, 255, 1);
 }
 
-.annotation-marker.new {
-  background: #52c41a;
+.annotation-text-marker.new {
+  background: rgba(82, 196, 26, 0.9);
   animation: pulse 1s infinite;
+  font-size: 16px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.annotation-text-marker.new:hover {
+  background: rgba(82, 196, 26, 1);
 }
 
 @keyframes pulse {
@@ -76,51 +71,22 @@
   }
 }
 
-.marker-number {
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-}
-
 /* Popover */
 .annotation-popover {
-  width: 240px;
+  min-width: 240px;
+  max-width: 400px;
 }
 
 .annotation-content {
-  margin-bottom: 12px !important;
+  margin-bottom: 8px !important;
   white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .popover-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 12px;
-}
-
-/* Annotations List */
-.annotations-list {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.annotations-list .ant-list-item {
-  padding: 8px 0;
-}
-
-.list-marker {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  background: #1677ff;
-  color: #fff;
-  border-radius: 50%;
-  font-size: 11px;
-  font-weight: 600;
+  margin-top: 8px;
 }

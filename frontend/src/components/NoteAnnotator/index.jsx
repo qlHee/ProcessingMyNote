@@ -10,14 +10,14 @@ import './index.css'
 const { Text, Paragraph } = Typography
 const { TextArea } = Input
 
-export default function NoteAnnotator({ noteId, imageSrc, onAnnotationChange }) {
+export default function NoteAnnotator({ noteId, imageSrc, isAnnotating = false, onAnnotationChange }) {
   const [annotations, setAnnotations] = useState([])
-  const [isAdding, setIsAdding] = useState(false)
-  const [newAnnotation, setNewAnnotation] = useState({ x: 0, y: 0, content: '' })
+  const [newAnnotation, setNewAnnotation] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [editContent, setEditContent] = useState('')
   const [loading, setLoading] = useState(false)
   const containerRef = useRef(null)
+  const imageRef = useRef(null)
 
   // Fetch annotations
   useEffect(() => {
@@ -35,9 +35,9 @@ export default function NoteAnnotator({ noteId, imageSrc, onAnnotationChange }) 
 
   // Handle click on image to add annotation
   const handleImageClick = (e) => {
-    if (!isAdding) return
+    if (!isAnnotating) return
 
-    const rect = containerRef.current.getBoundingClientRect()
+    const rect = imageRef.current.getBoundingClientRect()
     const x = ((e.clientX - rect.left) / rect.width) * 100
     const y = ((e.clientY - rect.top) / rect.height) * 100
 
@@ -45,8 +45,8 @@ export default function NoteAnnotator({ noteId, imageSrc, onAnnotationChange }) 
   }
 
   // Save new annotation
-  const handleSaveAnnotation = async () => {
-    if (!newAnnotation.content.trim()) {
+  const handleSaveAnnotation = async (content) => {
+    if (!content.trim()) {
       message.warning('请输入标注内容')
       return
     }
@@ -56,11 +56,10 @@ export default function NoteAnnotator({ noteId, imageSrc, onAnnotationChange }) 
       const res = await annotationsAPI.create(noteId, {
         x: newAnnotation.x,
         y: newAnnotation.y,
-        content: newAnnotation.content,
+        content: content,
       })
       setAnnotations([...annotations, res.data])
-      setNewAnnotation({ x: 0, y: 0, content: '' })
-      setIsAdding(false)
+      setNewAnnotation(null)
       message.success('标注添加成功')
       onAnnotationChange?.()
     } catch (error) {
@@ -113,186 +112,133 @@ export default function NoteAnnotator({ noteId, imageSrc, onAnnotationChange }) 
   }
 
   return (
-    <div className="note-annotator">
-      {/* Toolbar */}
-      <div className="annotator-toolbar">
-        {isAdding ? (
-          <>
-            <Text type="secondary">点击图片添加标注位置</Text>
-            <Button size="small" onClick={handleCancelAdd}>取消</Button>
-          </>
-        ) : (
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            size="small"
-            onClick={() => setIsAdding(true)}
-          >
-            添加标注
-          </Button>
-        )}
-        <Text type="secondary" className="annotation-count">
-          <MessageOutlined /> {annotations.length} 条标注
-        </Text>
-      </div>
-
-      {/* Image with annotations */}
-      <div 
-        ref={containerRef}
-        className={`annotator-container ${isAdding ? 'adding' : ''}`}
+    <div className="note-annotator-overlay">
+      <img
+        ref={imageRef}
+        src={imageSrc}
+        alt="Note"
+        className="note-image"
         onClick={handleImageClick}
-      >
-        <img src={imageSrc} alt="Note" className="annotator-image" />
-        
-        {/* Existing annotations */}
-        {annotations.map((annotation) => (
-          <Popover
-            key={annotation.id}
-            trigger="click"
-            placement="right"
-            content={
-              <div className="annotation-popover">
-                {editingId === annotation.id ? (
-                  <>
-                    <TextArea
-                      value={editContent}
-                      onChange={(e) => setEditContent(e.target.value)}
-                      autoSize={{ minRows: 2, maxRows: 4 }}
-                      autoFocus
-                    />
-                    <div className="popover-actions">
-                      <Button 
-                        size="small" 
-                        onClick={() => setEditingId(null)}
-                      >
-                        取消
-                      </Button>
-                      <Button 
-                        type="primary" 
-                        size="small"
-                        loading={loading}
-                        onClick={() => handleUpdateAnnotation(annotation.id)}
-                      >
-                        保存
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <Paragraph className="annotation-content">
-                      {annotation.content}
-                    </Paragraph>
-                    <div className="popover-actions">
+        style={{ cursor: isAnnotating ? 'crosshair' : 'default' }}
+        draggable={false}
+      />
+      {/* Existing annotations */}
+      {annotations.map((annotation) => (
+        <Popover
+          key={annotation.id}
+          trigger="click"
+          placement="right"
+          content={
+            <div className="annotation-popover">
+              {editingId === annotation.id ? (
+                <>
+                  <TextArea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    autoSize={{ minRows: 2, maxRows: 4 }}
+                    autoFocus
+                  />
+                  <div className="popover-actions">
+                    <Button 
+                      size="small" 
+                      onClick={() => setEditingId(null)}
+                    >
+                      取消
+                    </Button>
+                    <Button 
+                      type="primary" 
+                      size="small"
+                      loading={loading}
+                      onClick={() => handleUpdateAnnotation(annotation.id)}
+                    >
+                      保存
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Paragraph className="annotation-content">
+                    {annotation.content}
+                  </Paragraph>
+                  <div className="popover-actions">
+                    <Button 
+                      type="text" 
+                      size="small" 
+                      icon={<EditOutlined />}
+                      onClick={() => {
+                        setEditingId(annotation.id)
+                        setEditContent(annotation.content)
+                      }}
+                    >
+                      编辑
+                    </Button>
+                    <Popconfirm
+                      title="确定删除此标注？"
+                      onConfirm={() => handleDeleteAnnotation(annotation.id)}
+                      okText="删除"
+                      cancelText="取消"
+                    >
                       <Button 
                         type="text" 
                         size="small" 
-                        icon={<EditOutlined />}
-                        onClick={() => {
-                          setEditingId(annotation.id)
-                          setEditContent(annotation.content)
-                        }}
+                        danger
+                        icon={<DeleteOutlined />}
                       >
-                        编辑
+                        删除
                       </Button>
-                      <Popconfirm
-                        title="确定删除此标注？"
-                        onConfirm={() => handleDeleteAnnotation(annotation.id)}
-                        okText="删除"
-                        cancelText="取消"
-                      >
-                        <Button 
-                          type="text" 
-                          size="small" 
-                          danger
-                          icon={<DeleteOutlined />}
-                        >
-                          删除
-                        </Button>
-                      </Popconfirm>
-                    </div>
-                  </>
-                )}
-              </div>
-            }
-          >
-            <div
-              className="annotation-marker"
-              style={{ left: `${annotation.x}%`, top: `${annotation.y}%` }}
-            >
-              <span className="marker-number">
-                {annotations.indexOf(annotation) + 1}
-              </span>
+                    </Popconfirm>
+                  </div>
+                </>
+              )}
             </div>
-          </Popover>
-        ))}
-
-        {/* New annotation marker */}
-        {isAdding && newAnnotation.content !== undefined && newAnnotation.x > 0 && (
-          <Popover
-            open={true}
-            placement="right"
-            content={
-              <div className="annotation-popover">
-                <TextArea
-                  value={newAnnotation.content}
-                  onChange={(e) => setNewAnnotation({ ...newAnnotation, content: e.target.value })}
-                  placeholder="输入标注内容..."
-                  autoSize={{ minRows: 2, maxRows: 4 }}
-                  autoFocus
-                />
-                <div className="popover-actions">
-                  <Button size="small" onClick={handleCancelAdd}>
-                    取消
-                  </Button>
-                  <Button 
-                    type="primary" 
-                    size="small"
-                    loading={loading}
-                    onClick={handleSaveAnnotation}
-                  >
-                    保存
-                  </Button>
-                </div>
-              </div>
-            }
+          }
+        >
+          <div
+            className="annotation-text-marker"
+            style={{ left: `${annotation.x}%`, top: `${annotation.y}%` }}
           >
-            <div
-              className="annotation-marker new"
-              style={{ left: `${newAnnotation.x}%`, top: `${newAnnotation.y}%` }}
-            >
-              <PlusOutlined />
-            </div>
-          </Popover>
-        )}
-      </div>
+            {annotation.content}
+          </div>
+        </Popover>
+      ))}
 
-      {/* Annotations List */}
-      {annotations.length > 0 && (
-        <div className="annotations-list">
-          <Text strong>标注列表</Text>
-          <List
-            size="small"
-            dataSource={annotations}
-            renderItem={(item, index) => (
-              <List.Item
-                actions={[
-                  <Button 
-                    type="text" 
-                    size="small" 
-                    icon={<DeleteOutlined />}
-                    danger
-                    onClick={() => handleDeleteAnnotation(item.id)}
-                  />,
-                ]}
-              >
-                <List.Item.Meta
-                  avatar={<span className="list-marker">{index + 1}</span>}
-                  description={item.content}
-                />
-              </List.Item>
-            )}
-          />
-        </div>
+      {/* New annotation marker */}
+      {newAnnotation && (
+        <Popover
+          content={
+            <div className="annotation-popover">
+              <TextArea
+                placeholder="输入标注内容..."
+                rows={3}
+                autoFocus
+                onPressEnter={(e) => {
+                  if (!e.shiftKey) {
+                    e.preventDefault()
+                    handleSaveAnnotation(e.target.value)
+                  }
+                }}
+              />
+              <div className="popover-actions" style={{ marginTop: '8px' }}>
+                <Button size="small" onClick={() => setNewAnnotation(null)}>
+                  取消
+                </Button>
+              </div>
+            </div>
+          }
+          open={true}
+          trigger="click"
+          placement="top"
+        >
+          <div
+            className="annotation-text-marker new"
+            style={{
+              left: `${newAnnotation.x}%`,
+              top: `${newAnnotation.y}%`,
+            }}
+          >
+            +
+          </div>
+        </Popover>
       )}
     </div>
   )

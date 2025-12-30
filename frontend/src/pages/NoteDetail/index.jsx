@@ -25,12 +25,19 @@ export default function NoteDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [imageMode, setImageMode] = useState('processed')
+  const [activeTab, setActiveTab] = useState('info')
+  const [isAnnotating, setIsAnnotating] = useState(false)
   const [form] = Form.useForm()
   const { collapsed, setCollapsed } = useOutletContext()
 
   const { currentNote, notes, loading, fetchNote, updateNote, deleteNote, clearCurrentNote } = useNotesStore()
   const { folders } = useFoldersStore()
   const { tags } = useTagsStore()
+
+  // When switching to annotate tab, enable annotation mode
+  useEffect(() => {
+    setIsAnnotating(activeTab === 'annotate')
+  }, [activeTab])
 
   // Get current note index in the notes list
   const currentIndex = notes.findIndex(note => note.id === parseInt(id))
@@ -164,7 +171,7 @@ export default function NoteDetail() {
 
       {/* Main Content */}
       <div className="note-detail-body">
-        {/* Left: Image Viewer */}
+        {/* Left: Image Viewer with Annotation */}
         <div className="note-viewer-section">
           <div className="note-image-container">
             {/* Navigation Buttons */}
@@ -175,10 +182,12 @@ export default function NoteDetail() {
               disabled={!hasPrevious}
               size="large"
             />
-            <img
-              src={notesAPI.getImageUrl(currentNote.id, imageMode)}
-              alt={currentNote.title}
-              className="note-image"
+            {/* Image with Annotation Overlay */}
+            <NoteAnnotator
+              noteId={currentNote.id}
+              imageSrc={notesAPI.getImageUrl(currentNote.id, imageMode)}
+              isAnnotating={isAnnotating}
+              onAnnotationChange={() => fetchNote(id)}
             />
             <Button
               className="nav-button nav-button-next"
@@ -193,7 +202,8 @@ export default function NoteDetail() {
         {/* Right: Info Panel */}
         <div className="note-info-section">
           <Tabs
-            defaultActiveKey="info"
+            activeKey={activeTab}
+            onChange={setActiveTab}
             items={[
               {
                 key: 'info',
@@ -251,10 +261,9 @@ export default function NoteDetail() {
                 key: 'annotate',
                 label: <><HighlightOutlined /> 标注</>,
                 children: (
-                  <NoteAnnotator
-                    noteId={currentNote.id}
-                    imageSrc={notesAPI.getImageUrl(currentNote.id, 'processed')}
-                  />
+                  <div style={{ padding: '16px 0', textAlign: 'center', color: '#999' }}>
+                    点击左侧图片添加标注
+                  </div>
                 ),
               },
             ]}

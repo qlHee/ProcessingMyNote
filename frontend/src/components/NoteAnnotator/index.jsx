@@ -49,8 +49,8 @@ export default function NoteAnnotator({
     }
   }
 
-  // Handle click on image to add annotation
-  const handleImageClick = (e) => {
+  // Handle mouse down on image to add annotation
+  const handleImageMouseDown = (e) => {
     if (!annotationMode) return
     if (e.target !== imageRef.current) return
 
@@ -172,7 +172,11 @@ export default function NoteAnnotator({
 
     setLoading(true)
     try {
-      await annotationsAPI.update(noteId, id, { content: editContent })
+      const annotation = annotations.find(a => a.id === id)
+      await annotationsAPI.update(noteId, id, { 
+        content: editContent,
+        fontSize: annotation.fontSize
+      })
       setAnnotations(annotations.map(a => 
         a.id === id ? { ...a, content: editContent } : a
       ))
@@ -237,12 +241,14 @@ export default function NoteAnnotator({
     }
     
     try {
+      const parsed = parseAnnotation(annotation)
       await annotationsAPI.update(noteId, draggingId, {
         x: annotation.x,
         y: annotation.y,
-        content: annotation.content
+        content: parsed.type === 'text' ? parsed.data : annotation.content
       })
       message.success('位置已更新')
+      onAnnotationChange?.()
     } catch (error) {
       console.error('Update position error:', error)
       message.error('更新位置失败: ' + (error.response?.data?.detail || error.message))
@@ -358,29 +364,9 @@ export default function NoteAnnotator({
             </div>
           </div>
 
-          {/* Font Size Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Text strong style={{ whiteSpace: 'nowrap' }}>字体大小</Text>
-            <Select
-              value={fontSize}
-              onChange={setFontSize}
-              style={{ flex: 1 }}
-              size="small"
-            >
-              <Select.Option value={0.8}>0.8</Select.Option>
-              <Select.Option value={1.0}>1.0</Select.Option>
-              <Select.Option value={1.2}>1.2</Select.Option>
-              <Select.Option value={1.5}>1.5</Select.Option>
-              <Select.Option value={1.8}>1.8</Select.Option>
-              <Select.Option value={2.0}>2.0</Select.Option>
-              <Select.Option value={2.5}>2.5</Select.Option>
-              <Select.Option value={3.0}>3.0</Select.Option>
-            </Select>
-          </div>
-
           {/* Color Selector */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Text strong style={{ whiteSpace: 'nowrap' }}>文字颜色</Text>
+            <Text strong style={{ whiteSpace: 'nowrap' }}>标注颜色</Text>
             <Select
               value={color}
               onChange={setColor}
@@ -469,8 +455,10 @@ export default function NoteAnnotator({
         src={imageSrc}
         alt="Note"
         className="note-image"
-        onClick={handleImageClick}
-        onMouseDown={handleImageClick}
+        onClick={(e) => {
+          if (annotationMode === 'text') handleImageMouseDown(e)
+        }}
+        onMouseDown={handleImageMouseDown}
         style={{ cursor: annotationMode ? 'crosshair' : 'default' }}
         draggable={false}
       />
@@ -611,6 +599,28 @@ export default function NoteAnnotator({
                     autoSize={{ minRows: 2, maxRows: 4 }}
                     autoFocus
                   />
+                  <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+                    <Text strong style={{ fontSize: '12px' }}>字体大小: </Text>
+                    <Select
+                      value={annotation.fontSize || fontSize}
+                      onChange={(val) => {
+                        setAnnotations(annotations.map(a => 
+                          a.id === annotation.id ? { ...a, fontSize: val } : a
+                        ))
+                      }}
+                      size="small"
+                      style={{ width: '80px', marginLeft: '8px' }}
+                    >
+                      <Select.Option value={0.8}>0.8</Select.Option>
+                      <Select.Option value={1.0}>1.0</Select.Option>
+                      <Select.Option value={1.2}>1.2</Select.Option>
+                      <Select.Option value={1.5}>1.5</Select.Option>
+                      <Select.Option value={1.8}>1.8</Select.Option>
+                      <Select.Option value={2.0}>2.0</Select.Option>
+                      <Select.Option value={2.5}>2.5</Select.Option>
+                      <Select.Option value={3.0}>3.0</Select.Option>
+                    </Select>
+                  </div>
                   <div className="popover-actions">
                     <Button 
                       size="small" 
@@ -697,7 +707,25 @@ export default function NoteAnnotator({
                 autoFocus
                 onChange={(e) => setNewAnnotation({ ...newAnnotation, content: e.target.value })}
               />
-              <div className="popover-actions" style={{ marginTop: '8px' }}>
+              <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+                <Text strong style={{ fontSize: '12px' }}>字体大小: </Text>
+                <Select
+                  value={fontSize}
+                  onChange={setFontSize}
+                  size="small"
+                  style={{ width: '80px', marginLeft: '8px' }}
+                >
+                  <Select.Option value={0.8}>0.8</Select.Option>
+                  <Select.Option value={1.0}>1.0</Select.Option>
+                  <Select.Option value={1.2}>1.2</Select.Option>
+                  <Select.Option value={1.5}>1.5</Select.Option>
+                  <Select.Option value={1.8}>1.8</Select.Option>
+                  <Select.Option value={2.0}>2.0</Select.Option>
+                  <Select.Option value={2.5}>2.5</Select.Option>
+                  <Select.Option value={3.0}>3.0</Select.Option>
+                </Select>
+              </div>
+              <div className="popover-actions">
                 <Button size="small" onClick={() => {
                   setNewAnnotation(null)
                   setAnnotationMode(null)

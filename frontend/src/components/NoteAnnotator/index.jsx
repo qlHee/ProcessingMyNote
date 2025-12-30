@@ -280,6 +280,21 @@ export default function NoteAnnotator({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newAnnotation?.type])
 
+  // Parse annotation content to determine type
+  const parseAnnotation = (annotation) => {
+    try {
+      const parsed = JSON.parse(annotation.content)
+      if (Array.isArray(parsed)) {
+        return { type: 'draw', data: parsed }
+      } else if (parsed.x2 !== undefined && parsed.y2 !== undefined) {
+        return { type: parsed.type || 'line', data: parsed }
+      }
+    } catch (e) {
+      return { type: 'text', data: annotation.content }
+    }
+    return { type: 'text', data: annotation.content }
+  }
+
   // Panel mode: render toolbar and list
   if (panelMode) {
     return (
@@ -448,21 +463,6 @@ export default function NoteAnnotator({
         </Space>
       </div>
     )
-  }
-
-  // Parse annotation content to determine type
-  const parseAnnotation = (annotation) => {
-    try {
-      const parsed = JSON.parse(annotation.content)
-      if (Array.isArray(parsed)) {
-        return { type: 'draw', data: parsed }
-      } else if (parsed.x2 !== undefined && parsed.y2 !== undefined) {
-        return { type: parsed.type || 'line', data: parsed }
-      }
-    } catch (e) {
-      return { type: 'text', data: annotation.content }
-    }
-    return { type: 'text', data: annotation.content }
   }
 
   // Overlay mode: render on image

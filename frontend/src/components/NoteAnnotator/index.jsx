@@ -271,16 +271,11 @@ export default function NoteAnnotator({
   // Add drawing event listeners
   useEffect(() => {
     if (newAnnotation && (newAnnotation.type === 'draw' || newAnnotation.type === 'line' || newAnnotation.type === 'arrow')) {
-      const img = imageRef.current
-      if (img) {
-        img.addEventListener('mousemove', handleDrawMove)
-        img.addEventListener('mouseup', handleDrawEnd)
-        img.addEventListener('mouseleave', handleDrawEnd)
-        return () => {
-          img.removeEventListener('mousemove', handleDrawMove)
-          img.removeEventListener('mouseup', handleDrawEnd)
-          img.removeEventListener('mouseleave', handleDrawEnd)
-        }
+      document.addEventListener('mousemove', handleDrawMove)
+      document.addEventListener('mouseup', handleDrawEnd)
+      return () => {
+        document.removeEventListener('mousemove', handleDrawMove)
+        document.removeEventListener('mouseup', handleDrawEnd)
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

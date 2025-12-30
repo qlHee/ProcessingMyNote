@@ -1,0 +1,83 @@
+.tag-manager {
+  padding: 0 8px;
+}
+
+.tag-manager-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.tag-header-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #333;
+}
+
+.tag-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tag-mode-hint {
+  margin-bottom: 6px;
+  color: #fa8c16;
+  font-size: 12px;
+}
+
+.tag-list {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  flex-wrap: wrap;
+  overflow-x: visible;
+  padding-bottom: 4px;
+}
+
+.tag-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tag-item:hover {
+  background: #f5f5f5;
+}
+
+.tag-item.selected {
+  background: #e6f4ff;
+}
+
+.tag-label {
+  margin: 0;
+  cursor: pointer;
+}
+
+.tag-selected-check {
+  color: #52c41a;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.tag-empty {
+  text-align: center;
+  color: #8c8c8c;
+  padding: 16px;
+  font-size: 13px;
+}
+
+.tag-manager-collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+}

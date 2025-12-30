@@ -1,0 +1,54 @@
+.ai-assistant {
+  padding: 8px 0;
+}
+
+.ai-card {
+  margin-bottom: 16px;
+}
+
+.ai-header {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: #1677ff;
+}
+
+.ai-hint {
+  font-size: 12px;
+  margin-bottom: 12px !important;
+}
+
+.example-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.example-tag {
+  padding: 4px 10px;
+  background: #f5f5f5;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.example-tag:hover {
+  background: #e6f4ff;
+  color: #1677ff;
+}
+
+.manual-params {
+  padding: 8px 0;
+}
+
+.param-item {
+  margin-bottom: 16px;
+}
+
+.param-item .ant-typography {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}

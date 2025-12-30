@@ -1,0 +1,126 @@
+.note-annotator {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.annotator-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.annotation-count {
+  margin-left: auto;
+}
+
+.annotator-container {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  background: #fafafa;
+  border-radius: 8px;
+  cursor: default;
+}
+
+.annotator-container.adding {
+  cursor: crosshair;
+}
+
+.annotator-image {
+  display: block;
+  max-width: 100%;
+  border-radius: 4px;
+}
+
+/* Annotation Markers */
+.annotation-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  background: #1677ff;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s, box-shadow 0.2s;
+  z-index: 10;
+}
+
+.annotation-marker:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.annotation-marker.new {
+  background: #52c41a;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(82, 196, 26, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0);
+  }
+}
+
+.marker-number {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Popover */
+.annotation-popover {
+  width: 240px;
+}
+
+.annotation-content {
+  margin-bottom: 12px !important;
+  white-space: pre-wrap;
+}
+
+.popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Annotations List */
+.annotations-list {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.annotations-list .ant-list-item {
+  padding: 8px 0;
+}
+
+.list-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #1677ff;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+}

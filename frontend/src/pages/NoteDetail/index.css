@@ -1,0 +1,120 @@
+.note-detail {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.note-detail-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.note-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  gap: 16px;
+}
+
+.note-detail-title-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.note-breadcrumb {
+  font-size: 12px;
+}
+
+.note-detail-title {
+  margin: 0 !important;
+  text-align: center;
+}
+
+/* Main Body - Two Column Layout */
+.note-detail-body {
+  flex: 1;
+  display: flex;
+  gap: 24px;
+  overflow: hidden;
+}
+
+/* Left: Image Viewer */
+.note-viewer-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.viewer-toolbar {
+  margin-bottom: 16px;
+}
+
+.note-image-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: auto;
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.note-image {
+  max-width: 100%;
+  max-height: calc(100vh - 300px);
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Right: Info Panel */
+.note-info-section {
+  width: 256px;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.note-info-section .ant-tabs-nav {
+  padding: 0 8px;
+}
+
+.info-panel {
+  padding: 8px 8px;
+}
+
+.info-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.info-section > span {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.tags-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ocr-text {
+  margin-top: 8px;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}

@@ -27,7 +27,6 @@
   transform: translate(-50%, -50%);
   padding: 2px 4px;
   background: transparent;
-  color: #ff4d4f;
   font-size: 14px;
   font-weight: 600;
   cursor: move;
@@ -41,18 +40,21 @@
     1px -1px 0 #fff,
     -1px 1px 0 #fff,
     1px 1px 0 #fff,
-    0 0 3px rgba(255, 255, 255, 0.8);
+    -2px -2px 2px rgba(255, 255, 255, 0.9),
+    2px 2px 2px rgba(255, 255, 255, 0.9);
   user-select: none;
+  pointer-events: auto;
 }
 
 .annotation-text-marker:hover {
-  color: #ff7875;
+  filter: brightness(1.2);
   text-shadow: 
     -1px -1px 0 #fff,
     1px -1px 0 #fff,
     -1px 1px 0 #fff,
     1px 1px 0 #fff,
-    0 0 5px rgba(255, 255, 255, 1);
+    -2px -2px 3px rgba(255, 255, 255, 1),
+    2px 2px 3px rgba(255, 255, 255, 1);
 }
 
 .annotation-text-marker.new {

@@ -1,7 +1,7 @@
 /**
  * NoteDetail Page - View, edit and annotate note
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { 
   Button, Spin, Typography, Space, Tag, Modal, 
@@ -30,6 +30,7 @@ export default function NoteDetail() {
   const [fontSize, setFontSize] = useState(14)
   const [form] = Form.useForm()
   const { collapsed, setCollapsed } = useOutletContext()
+  const imageRef = useRef(null)
 
   const { currentNote, notes, loading, fetchNote, updateNote, deleteNote, clearCurrentNote } = useNotesStore()
   const { folders } = useFoldersStore()
@@ -185,14 +186,24 @@ export default function NoteDetail() {
               disabled={!hasPrevious}
               size="large"
             />
-            {/* Image with Annotation Overlay */}
-            <NoteAnnotator
-              noteId={currentNote.id}
-              imageSrc={notesAPI.getImageUrl(currentNote.id, imageMode)}
-              annotationMode={annotationMode}
-              fontSize={fontSize}
-              onAnnotationChange={() => fetchNote(id)}
-            />
+            {/* Image with Annotation Overlay - only show annotations on processed image */}
+            {imageMode === 'processed' ? (
+              <NoteAnnotator
+                noteId={currentNote.id}
+                imageSrc={notesAPI.getImageUrl(currentNote.id, imageMode)}
+                annotationMode={annotationMode}
+                fontSize={fontSize}
+                onAnnotationChange={() => fetchNote(id)}
+              />
+            ) : (
+              <img
+                ref={imageRef}
+                src={notesAPI.getImageUrl(currentNote.id, imageMode)}
+                alt={currentNote.title}
+                className="note-image"
+                draggable={false}
+              />
+            )}
             <Button
               className="nav-button nav-button-next"
               icon={<RightOutlined />}

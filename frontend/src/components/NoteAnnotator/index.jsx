@@ -30,6 +30,7 @@ export default function NoteAnnotator({
   const [loading, setLoading] = useState(false)
   const [draggingId, setDraggingId] = useState(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const [color, setColor] = useState('#ff4d4f')
   const imageRef = useRef(null)
 
   // Fetch annotations
@@ -74,6 +75,7 @@ export default function NoteAnnotator({
         y: newAnnotation.y,
         content: content,
         fontSize: fontSize,
+        color: color,
       })
       setAnnotations([...annotations, res.data])
       setNewAnnotation(null)
@@ -81,7 +83,8 @@ export default function NoteAnnotator({
       message.success('标注添加成功')
       onAnnotationChange?.()
     } catch (error) {
-      message.error('添加失败')
+      console.error('Create annotation error:', error)
+      message.error('添加失败: ' + (error.response?.data?.detail || error.message))
     } finally {
       setLoading(false)
     }
@@ -160,8 +163,10 @@ export default function NoteAnnotator({
         x: annotation.x,
         y: annotation.y
       })
+      message.success('位置已更新')
     } catch (error) {
-      message.error('更新位置失败')
+      console.error('Update position error:', error)
+      message.error('更新位置失败: ' + (error.response?.data?.detail || error.message))
     }
     setDraggingId(null)
   }
@@ -236,10 +241,46 @@ export default function NoteAnnotator({
               style={{ width: '100%', marginTop: 8 }}
               size="small"
             >
+              <Select.Option value={10}>极小 (10px)</Select.Option>
               <Select.Option value={12}>小 (12px)</Select.Option>
               <Select.Option value={14}>中 (14px)</Select.Option>
               <Select.Option value={16}>大 (16px)</Select.Option>
               <Select.Option value={18}>特大 (18px)</Select.Option>
+              <Select.Option value={20}>超大 (20px)</Select.Option>
+              <Select.Option value={24}>巨大 (24px)</Select.Option>
+            </Select>
+          </div>
+
+          {/* Color Selector */}
+          <div>
+            <Text strong>文字颜色</Text>
+            <Select
+              value={color}
+              onChange={setColor}
+              style={{ width: '100%', marginTop: 8 }}
+              size="small"
+            >
+              <Select.Option value="#ff4d4f">
+                <span style={{ color: '#ff4d4f' }}>●</span> 红色
+              </Select.Option>
+              <Select.Option value="#1890ff">
+                <span style={{ color: '#1890ff' }}>●</span> 蓝色
+              </Select.Option>
+              <Select.Option value="#52c41a">
+                <span style={{ color: '#52c41a' }}>●</span> 绿色
+              </Select.Option>
+              <Select.Option value="#faad14">
+                <span style={{ color: '#faad14' }}>●</span> 黄色
+              </Select.Option>
+              <Select.Option value="#722ed1">
+                <span style={{ color: '#722ed1' }}>●</span> 紫色
+              </Select.Option>
+              <Select.Option value="#000000">
+                <span style={{ color: '#000000' }}>●</span> 黑色
+              </Select.Option>
+              <Select.Option value="#ffffff">
+                <span style={{ color: '#ffffff', textShadow: '0 0 1px #000' }}>●</span> 白色
+              </Select.Option>
             </Select>
           </div>
 
@@ -376,6 +417,7 @@ export default function NoteAnnotator({
               left: `${annotation.x}%`, 
               top: `${annotation.y}%`,
               fontSize: `${annotation.fontSize || fontSize}px`,
+              color: annotation.color || color,
               cursor: 'move'
             }}
             onMouseDown={(e) => handleDragStart(e, annotation.id)}

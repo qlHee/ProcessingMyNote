@@ -145,7 +145,9 @@ async def create_annotation(
         note_id=note_id,
         content=annotation_data.content,
         x=annotation_data.x,
-        y=annotation_data.y
+        y=annotation_data.y,
+        font_size=annotation_data.fontSize,
+        color=annotation_data.color
     )
     db.add(annotation)
     await db.flush()
@@ -187,6 +189,10 @@ async def update_annotation(
         annotation.x = annotation_data.x
     if annotation_data.y is not None:
         annotation.y = annotation_data.y
+    if annotation_data.fontSize is not None:
+        annotation.font_size = annotation_data.fontSize
+    if annotation_data.color is not None:
+        annotation.color = annotation_data.color
     
     await db.flush()
     await db.refresh(annotation)

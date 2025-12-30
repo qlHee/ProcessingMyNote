@@ -15,14 +15,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  padding: 16px 24px;
+  background: #fff;
   border-bottom: 1px solid #f0f0f0;
+  gap: 16px;
+}
+
+.note-detail-title-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.note-breadcrumb {
+  font-size: 12px;
 }
 
 .note-detail-title {
   margin: 0 !important;
-  flex: 1;
   text-align: center;
 }
 
@@ -67,13 +78,17 @@
 
 /* Right: Info Panel */
 .note-info-section {
-  width: 320px;
+  width: 256px;
   flex-shrink: 0;
   overflow-y: auto;
 }
 
+.note-info-section .ant-tabs-nav {
+  padding: 0 8px;
+}
+
 .info-panel {
-  padding: 8px 0;
+  padding: 8px 8px;
 }
 
 .info-section {

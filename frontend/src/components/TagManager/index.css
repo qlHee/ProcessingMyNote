@@ -4,24 +4,49 @@
 
 .tag-manager-header {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.tag-header-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #333;
+}
+
+.tag-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tag-mode-hint {
+  margin-bottom: 6px;
+  color: #fa8c16;
+  font-size: 12px;
 }
 
 .tag-list {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 4px;
+  flex-wrap: wrap;
+  overflow-x: visible;
+  padding-bottom: 4px;
 }
 
 .tag-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 8px;
+  gap: 6px;
+  padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .tag-item:hover {
@@ -37,13 +62,10 @@
   cursor: pointer;
 }
 
-.tag-actions {
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.tag-item:hover .tag-actions {
-  opacity: 1;
+.tag-selected-check {
+  color: #52c41a;
+  font-weight: 600;
+  font-size: 12px;
 }
 
 .tag-empty {

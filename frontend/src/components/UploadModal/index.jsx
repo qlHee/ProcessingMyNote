@@ -35,7 +35,8 @@ export default function UploadModal({ open, onClose }) {
     setUploading(true)
 
     try {
-      for (const file of fileList) {
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i]
         // 确保文件大小合理
         if (file.size > 10 * 1024 * 1024) {
           message.error(`文件 ${file.name} 太大，请上传小于10MB的图片`)
@@ -46,8 +47,17 @@ export default function UploadModal({ open, onClose }) {
         // 直接使用axios发送请求
         const formData = new FormData()
         formData.append('file', file.originFileObj)
-        if (values.title) formData.append('title', values.title)
-        if (values.folder_id) formData.append('folder_id', values.folder_id)
+        
+        // 处理标题：如果有多个文件且指定了标题，添加编号
+        if (values.title) {
+          const title = fileList.length > 1 ? `${values.title}-${i + 1}` : values.title
+          formData.append('title', title)
+        }
+        
+        // folder_id默认为0（未分类）
+        const folderId = values.folder_id !== undefined ? values.folder_id : 0
+        formData.append('folder_id', folderId)
+        
         if (values.tag_ids?.length) formData.append('tag_ids', values.tag_ids.join(','))
 
         const response = await axios.post('/api/notes/upload/', formData, {
@@ -111,8 +121,9 @@ export default function UploadModal({ open, onClose }) {
           <Input placeholder="留空将自动从 OCR 识别结果生成" />
         </Form.Item>
 
-        <Form.Item name="folder_id" label="保存到文件夹">
-          <Select placeholder="选择文件夹（可选）" allowClear>
+        <Form.Item name="folder_id" label="保存到文件夹" initialValue={0}>
+          <Select placeholder="选择文件夹">
+            <Select.Option value={0}>未分类</Select.Option>
             {folders.map((folder) => (
               <Select.Option key={folder.id} value={folder.id}>
                 {folder.name}

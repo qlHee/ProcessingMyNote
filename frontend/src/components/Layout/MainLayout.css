@@ -12,13 +12,13 @@
   height: 64px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 18px;
+  padding: 0 16px;
+  font-size: 16px;
   font-weight: 600;
   color: #1677ff;
-  border-bottom: 1px solid #f0f0f0;
   white-space: nowrap;
   overflow: hidden;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .sider-content {
@@ -38,16 +38,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.main-header {
-  background: #fff !important;
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid #f0f0f0;
-  height: 64px;
 }
 
 .collapse-btn {
@@ -70,11 +60,3 @@
   font-weight: 500;
 }
 
-.main-content {
-  margin: 24px;
-  padding: 24px;
-  background: #fff;
-  border-radius: 12px;
-  min-height: calc(100vh - 64px - 48px);
-  overflow: auto;
-}

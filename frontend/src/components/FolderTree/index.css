@@ -4,29 +4,50 @@
 
 .folder-tree-header {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 8px;
-}
-
-.folder-all {
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
   align-items: center;
-  gap: 8px;
-  color: #333;
+  justify-content: space-between;
   margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.folder-header-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #333;
+}
+
+.folder-top-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.folder-pill {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #333;
+  background: #f7f7f7;
   transition: all 0.2s;
+  border: 1px solid #f0f0f0;
 }
 
-.folder-all:hover {
-  background: #f5f5f5;
+.folder-pill:hover {
+  background: #f0f8ff;
 }
 
-.folder-all.selected {
+.folder-pill.selected {
   background: #e6f4ff;
   color: #1677ff;
+  border-color: #91caff;
 }
 
 .folder-tree-list .ant-tree-treenode {
@@ -36,14 +57,6 @@
 
 .folder-tree-list .ant-tree-node-content-wrapper {
   flex: 1;
-  display: flex;
-  align-items: center;
-  min-width: 0;
-}
-
-.folder-tree-list .ant-tree-title {
-  flex: 1;
-  min-width: 0;
 }
 
 .folder-item {
@@ -51,6 +64,12 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
+}
+
+.folder-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -68,6 +87,11 @@
 
 .folder-item:hover .folder-actions {
   opacity: 1;
+}
+
+.folder-inline-icon {
+  color: #595959;
+  font-size: 14px;
 }
 
 .folder-tree-collapsed {

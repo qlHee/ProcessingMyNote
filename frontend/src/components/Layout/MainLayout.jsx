@@ -3,18 +3,15 @@
  */
 import { useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
-import { Layout, Menu, Button, Avatar, Dropdown, Space } from 'antd'
+import { Layout, Button, Avatar, Dropdown, Space } from 'antd'
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  HomeOutlined,
-  FolderOutlined,
-  TagsOutlined,
   UserOutlined,
   LogoutOutlined,
   UploadOutlined,
 } from '@ant-design/icons'
-import { useAuthStore } from '../../stores'
+import { useAuthStore, useFoldersStore, useNotesStore, useTagsStore } from '../../stores'
 import FolderTree from '../FolderTree'
 import TagManager from '../TagManager'
 import UploadModal from '../UploadModal'
@@ -26,7 +23,21 @@ export default function MainLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const [uploadVisible, setUploadVisible] = useState(false)
   const { user, logout } = useAuthStore()
+  const { folders, selectedFolderId, setSelectedFolder } = useFoldersStore()
+  const { tags, selectedTagIds, clearTagSelection } = useTagsStore()
+  const { fetchNotes } = useNotesStore()
   const navigate = useNavigate()
+
+  const getBreadcrumbPath = () => {
+    if (!selectedFolderId) return []
+    const path = []
+    let current = folders.find(f => f.id === selectedFolderId)
+    while (current) {
+      path.unshift(current)
+      current = folders.find(f => f.id === current.parent_id)
+    }
+    return path
+  }
 
   const userMenuItems = [
     {
@@ -47,7 +58,7 @@ export default function MainLayout() {
         collapsible
         collapsed={collapsed}
         width={280}
-        collapsedWidth={80}
+        collapsedWidth={0}
         className="main-sider"
       >
         <div className="logo">
@@ -56,50 +67,17 @@ export default function MainLayout() {
         
         <div className="sider-content">
           <div className="sider-section">
-            <div className="section-title">
-              {!collapsed && <><FolderOutlined /> 文件夹</>}
-            </div>
             <FolderTree collapsed={collapsed} />
           </div>
           
           <div className="sider-section">
-            <div className="section-title">
-              {!collapsed && <><TagsOutlined /> 标签</>}
-            </div>
             <TagManager collapsed={collapsed} />
           </div>
         </div>
       </Sider>
 
       <Layout>
-        <Header className="main-header">
-          <Space>
-            <Button
-              type="text"
-              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-              onClick={() => setCollapsed(!collapsed)}
-              className="collapse-btn"
-            />
-            <Button
-              type="primary"
-              icon={<UploadOutlined />}
-              onClick={() => setUploadVisible(true)}
-            >
-              上传笔记
-            </Button>
-          </Space>
-
-          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-            <Space className="user-info">
-              <Avatar icon={<UserOutlined />} />
-              <span className="username">{user?.username || 'User'}</span>
-            </Space>
-          </Dropdown>
-        </Header>
-
-        <Content className="main-content">
-          <Outlet />
-        </Content>
+        <Outlet context={{ collapsed, setCollapsed }} />
       </Layout>
 
       <UploadModal

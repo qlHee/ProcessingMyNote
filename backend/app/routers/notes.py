@@ -3,6 +3,7 @@ Notes Router - Full CRUD for notes with image upload and processing
 """
 import uuid
 import shutil
+import asyncio
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
 from fastapi.responses import FileResponse
@@ -35,6 +36,7 @@ def validate_image(filename: str) -> bool:
 @router.get("/", response_model=list[NoteListResponse])
 async def get_notes(
     folder_id: Optional[int] = Query(None, description="Filter by folder"),
+    folder_ids: Optional[str] = Query(None, description="Filter by multiple folders (comma-separated)"),
     tag_ids: Optional[str] = Query(None, description="Filter by tag IDs (comma-separated)"),
     keyword: Optional[str] = Query(None, description="Search keyword"),
     db: AsyncSession = Depends(get_db),
@@ -42,15 +44,25 @@ async def get_notes(
 ):
     """
     Get all notes with optional filters
-    - folder_id: Filter by folder
+    - folder_id: Filter by single folder
+    - folder_ids: Filter by multiple folders (comma-separated IDs)
     - tag_ids: Filter by tags (comma-separated IDs)
     - keyword: Search in title and OCR text
     """
     query = select(Note).where(Note.user_id == current_user.id).options(selectinload(Note.tags))
     
-    # Filter by folder
-    if folder_id is not None:
-        query = query.where(Note.folder_id == folder_id)
+    # Filter by folder(s)
+    if folder_ids is not None:
+        # Multiple folders (for subfolder inclusion)
+        folder_id_list = [int(fid.strip()) for fid in folder_ids.split(",") if fid.strip()]
+        if folder_id_list:
+            query = query.where(Note.folder_id.in_(folder_id_list))
+    elif folder_id is not None:
+        # Single folder
+        if folder_id == 0:
+            query = query.where(Note.folder_id.is_(None))
+        else:
+            query = query.where(Note.folder_id == folder_id)
     
     # Filter by tags
     if tag_ids:
@@ -109,8 +121,10 @@ async def upload_note(
     if not file.filename or not validate_image(file.filename):
         raise HTTPException(status_code=400, detail="Invalid file type. Allowed: jpg, jpeg, png, gif, bmp, webp")
     
-    # Validate folder if provided
-    if folder_id:
+    # Handle folder_id: 0 means uncategorized (NULL), otherwise validate folder exists
+    if folder_id == 0:
+        folder_id = None
+    elif folder_id:
         folder_result = await db.execute(
             select(Folder).where(Folder.id == folder_id, Folder.user_id == current_user.id)
         )
@@ -128,13 +142,13 @@ async def upload_note(
         with open(original_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        # Process image
+        # Process image in thread pool to avoid blocking
         processor = ImageProcessor()
-        processor.process(str(original_path), str(processed_path))
+        await asyncio.to_thread(processor.process, str(original_path), str(processed_path))
         
-        # Extract text and generate title
-        ocr_text = extract_text_from_image(str(processed_path))
-        auto_title = title or generate_title_from_image(str(processed_path))
+        # Extract text and generate title in thread pool
+        ocr_text = await asyncio.to_thread(extract_text_from_image, str(processed_path))
+        auto_title = title or await asyncio.to_thread(generate_title_from_image, str(processed_path))
         
         # Create note record
         note = Note(
@@ -149,28 +163,34 @@ async def upload_note(
         db.add(note)
         await db.flush()
         
-        # Add tags if provided
+        # Add tags if provided - use direct insert to avoid lazy loading issues
         if tag_ids:
             tag_id_list = [int(tid.strip()) for tid in tag_ids.split(",") if tid.strip()]
-            for tid in tag_id_list:
+            if tag_id_list:
+                # Verify tags exist and belong to user
                 tag_result = await db.execute(
-                    select(Tag).where(Tag.id == tid, Tag.user_id == current_user.id)
+                    select(Tag).where(Tag.id.in_(tag_id_list), Tag.user_id == current_user.id)
                 )
-                tag = tag_result.scalar_one_or_none()
-                if tag:
-                    note.tags.append(tag)
+                valid_tags = tag_result.scalars().all()
+                
+                # Insert into association table directly
+                for tag in valid_tags:
+                    await db.execute(
+                        NoteTag.insert().values(note_id=note.id, tag_id=tag.id)
+                    )
         
-        await db.flush()
-        await db.refresh(note)
+        await db.commit()
         
-        # Load tags relationship
+        # Load note with tags relationship
         result = await db.execute(
             select(Note).where(Note.id == note.id).options(selectinload(Note.tags))
         )
         return result.scalar_one()
         
     except Exception as e:
-        # Cleanup on error
+        # Rollback database changes
+        await db.rollback()
+        # Cleanup files on error
         if original_path.exists():
             original_path.unlink()
         if processed_path.exists():

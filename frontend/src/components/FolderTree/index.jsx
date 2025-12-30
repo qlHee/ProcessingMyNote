@@ -12,7 +12,6 @@ import {
   MoreOutlined,
 } from '@ant-design/icons'
 import { useFoldersStore, useNotesStore } from '../../stores'
-import DroppableFolder from '../DroppableFolder'
 import './index.css'
 
 export default function FolderTree({ collapsed }) {
@@ -31,20 +30,6 @@ export default function FolderTree({ collapsed }) {
   const [editingFolder, setEditingFolder] = useState(null)
   const [form] = Form.useForm()
 
-  const handleNoteDrop = async (noteId, folderId) => {
-    try {
-      const result = await updateNote(noteId, { folder_id: folderId })
-      if (result.success) {
-        message.success('笔记已移动到文件夹')
-        fetchNotes()
-      } else {
-        message.error(result.error || '移动失败')
-      }
-    } catch (error) {
-      message.error('移动失败')
-    }
-  }
-
   useEffect(() => {
     fetchFolders()
   }, [fetchFolders])
@@ -53,6 +38,16 @@ export default function FolderTree({ collapsed }) {
     const folderId = selectedKeys[0] ? parseInt(selectedKeys[0]) : null
     setSelectedFolder(folderId)
     fetchNotes({ folder_id: folderId })
+  }
+
+  const handleAllNotes = () => {
+    setSelectedFolder(null)
+    fetchNotes({})
+  }
+
+  const handleUnclassified = () => {
+    setSelectedFolder(0)
+    fetchNotes({ folder_id: 0 })
   }
 
   const handleCreate = (parentId = null) => {
@@ -104,63 +99,86 @@ export default function FolderTree({ collapsed }) {
     }
   }
 
+  const handleDropNote = async (folderId, event) => {
+    event.preventDefault()
+    const noteId = parseInt(event.dataTransfer.getData('noteId'), 10)
+    if (!noteId) return
+
+    const res = await updateNote(noteId, { folder_id: folderId })
+    if (res?.success) {
+      message.success('笔记已移动到该文件夹')
+      const currentFilter = selectedFolderId === null
+        ? {}
+        : selectedFolderId === 0
+          ? { folder_id: 0 }
+          : { folder_id: selectedFolderId }
+      fetchNotes(currentFilter)
+    } else {
+      message.error(res?.error || '移动失败')
+    }
+  }
+
   const buildTreeData = (folders) => {
     return folders.map((folder) => ({
       key: String(folder.id),
       title: (
-        <DroppableFolder folder={folder} onDrop={handleNoteDrop}>
-          <div className="folder-item">
+        <div
+          className="folder-item"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => handleDropNote(folder.id, e)}
+        >
+          <div className="folder-left">
+            <FolderOutlined className="folder-inline-icon" />
             <span className="folder-name">{folder.name}</span>
-            {!collapsed && (
-              <Dropdown
-                menu={{
-                  items: [
-                    {
-                      key: 'add',
-                      icon: <PlusOutlined />,
-                      label: '新建子文件夹',
-                      onClick: (e) => {
-                        e.domEvent.stopPropagation()
-                        handleCreate(folder.id)
-                      },
-                    },
-                    {
-                      key: 'edit',
-                      icon: <EditOutlined />,
-                      label: '重命名',
-                      onClick: (e) => {
-                        e.domEvent.stopPropagation()
-                        handleEdit(folder)
-                      },
-                    },
-                    {
-                      key: 'delete',
-                      icon: <DeleteOutlined />,
-                      label: '删除',
-                      danger: true,
-                      onClick: (e) => {
-                        e.domEvent.stopPropagation()
-                        handleDelete(folder)
-                      },
-                    },
-                  ],
-                }}
-                trigger={['click']}
-              >
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<MoreOutlined />}
-                  className="folder-actions"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </Dropdown>
-            )}
           </div>
-        </DroppableFolder>
+          {!collapsed && (
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: 'add',
+                    icon: <PlusOutlined />,
+                    label: '新建子文件夹',
+                    onClick: (e) => {
+                      e.domEvent.stopPropagation()
+                      handleCreate(folder.id)
+                    },
+                  },
+                  {
+                    key: 'edit',
+                    icon: <EditOutlined />,
+                    label: '重命名',
+                    onClick: (e) => {
+                      e.domEvent.stopPropagation()
+                      handleEdit(folder)
+                    },
+                  },
+                  {
+                    key: 'delete',
+                    icon: <DeleteOutlined />,
+                    label: '删除',
+                    danger: true,
+                    onClick: (e) => {
+                      e.domEvent.stopPropagation()
+                      handleDelete(folder)
+                    },
+                  },
+                ],
+              }}
+              trigger={['click']}
+            >
+              <Button
+                type="text"
+                size="small"
+                icon={<MoreOutlined />}
+                className="folder-actions"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </Dropdown>
+          )}
+        </div>
       ),
-      icon: ({ expanded }) =>
-        expanded ? <FolderOpenOutlined /> : <FolderOutlined />,
+      icon: null,
       children: folder.children?.length ? buildTreeData(folder.children) : undefined,
     }))
   }
@@ -179,7 +197,27 @@ export default function FolderTree({ collapsed }) {
 
   return (
     <div className="folder-tree">
+      <div className="folder-top-row">
+        <div
+          className={`folder-pill ${selectedFolderId === null ? 'selected' : ''}`}
+          onClick={handleAllNotes}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => handleDropNote(null, e)}
+        >
+          全部笔记
+        </div>
+        <div
+          className={`folder-pill ${selectedFolderId === 0 ? 'selected' : ''}`}
+          onClick={handleUnclassified}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => handleDropNote(null, e)}
+        >
+          未分类笔记
+        </div>
+      </div>
+
       <div className="folder-tree-header">
+        <span className="folder-header-title"><FolderOutlined /> 文件夹</span>
         <Button
           type="text"
           size="small"
@@ -190,16 +228,9 @@ export default function FolderTree({ collapsed }) {
         </Button>
       </div>
 
-      <div
-        className={`folder-all ${selectedFolderId === null ? 'selected' : ''}`}
-        onClick={() => handleSelect([])}
-      >
-        <FolderOutlined /> 全部笔记
-      </div>
-
       <Tree
-        showIcon
-        selectedKeys={selectedFolderId ? [String(selectedFolderId)] : []}
+        showIcon={false}
+        selectedKeys={selectedFolderId !== null && selectedFolderId !== 0 ? [String(selectedFolderId)] : []}
         onSelect={handleSelect}
         treeData={buildTreeData(folderTree)}
         className="folder-tree-list"

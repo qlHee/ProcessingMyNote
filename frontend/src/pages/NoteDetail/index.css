@@ -43,7 +43,7 @@
   display: flex;
   gap: 0;
   overflow: hidden;
-  padding: 0 24px 24px 24px;
+  padding: 0 0 24px 24px;
 }
 
 /* Left: Image Viewer */

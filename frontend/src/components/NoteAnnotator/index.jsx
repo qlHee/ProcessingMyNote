@@ -177,15 +177,18 @@ export default function NoteAnnotator({
       const annotation = annotations.find(a => a.id === id)
       await annotationsAPI.update(noteId, id, { 
         content: editContent,
-        fontSize: annotation.fontSize
+        fontSize: annotation.fontSize,
+        x: annotation.x,
+        y: annotation.y
       })
       setAnnotations(annotations.map(a => 
-        a.id === id ? { ...a, content: editContent } : a
+        a.id === id ? { ...a, content: editContent, fontSize: annotation.fontSize } : a
       ))
       setEditingId(null)
       setEditContent('')
       message.success('更新成功')
-      onAnnotationChange?.()
+      // Refresh to get latest data from server
+      fetchAnnotations()
     } catch (error) {
       message.error('更新失败')
     } finally {
@@ -424,6 +427,57 @@ export default function NoteAnnotator({
               locale={{ emptyText: '暂无文字标注' }}
               renderItem={(annotation) => {
                 const parsed = parseAnnotation(annotation)
+                
+                // Show edit form if editing this annotation
+                if (editingId === annotation.id) {
+                  return (
+                    <List.Item>
+                      <div style={{ width: '100%' }}>
+                        <TextArea
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          autoSize={{ minRows: 2, maxRows: 4 }}
+                          autoFocus
+                          style={{ marginBottom: '8px' }}
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <Text style={{ fontSize: '12px', marginRight: '4px' }}>字号:</Text>
+                            <Select
+                              value={annotation.fontSize || fontSize}
+                              onChange={(val) => {
+                                setAnnotations(annotations.map(a => 
+                                  a.id === annotation.id ? { ...a, fontSize: val } : a
+                                ))
+                              }}
+                              size="small"
+                              style={{ width: '60px' }}
+                            >
+                              <Select.Option value={0.8}>0.8</Select.Option>
+                              <Select.Option value={1.0}>1.0</Select.Option>
+                              <Select.Option value={1.2}>1.2</Select.Option>
+                              <Select.Option value={1.5}>1.5</Select.Option>
+                              <Select.Option value={1.8}>1.8</Select.Option>
+                              <Select.Option value={2.0}>2.0</Select.Option>
+                              <Select.Option value={2.5}>2.5</Select.Option>
+                              <Select.Option value={3.0}>3.0</Select.Option>
+                            </Select>
+                          </div>
+                          <Button size="small" onClick={() => setEditingId(null)}>取消</Button>
+                          <Button 
+                            type="primary" 
+                            size="small"
+                            loading={loading}
+                            onClick={() => handleUpdateAnnotation(annotation.id)}
+                          >
+                            保存
+                          </Button>
+                        </div>
+                      </div>
+                    </List.Item>
+                  )
+                }
+                
                 return (
                 <List.Item
                   actions={[
@@ -432,7 +486,8 @@ export default function NoteAnnotator({
                       type="text"
                       size="small"
                       icon={<EditOutlined />}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation()
                         setEditingId(annotation.id)
                         setEditContent(annotation.content)
                       }}

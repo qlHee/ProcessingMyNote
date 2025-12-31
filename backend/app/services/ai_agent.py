@@ -7,6 +7,13 @@ import httpx
 from typing import Optional
 from app.config import settings
 
+# 从 api_keys.py 导入 DeepSeek API Key
+try:
+    from app.config.api_keys import DEEPSEEK_API_KEY
+except ImportError:
+    DEEPSEEK_API_KEY = None
+    print("Warning: api_keys.py not found, DeepSeek API will not be available")
+
 
 # Default processing parameters
 DEFAULT_PARAMS = {
@@ -22,10 +29,10 @@ DEFAULT_PARAMS = {
 # 规则按优先级排序，更具体的规则放在前面
 ADJUSTMENT_RULES = [
     # ===== 字迹深浅相关 =====
-    # 字迹太淡/浅，需要加深（温和调整，避免黑底）
-    (["字迹太淡", "字太淡", "太淡了", "太浅了", "字迹浅", "看不清字", "字不清楚"], {"contrast": 0.2, "c": -2}),
-    (["加深", "深一点", "更深", "颜色深"], {"contrast": 0.15, "c": -1}),
-    (["淡", "浅"], {"contrast": 0.1, "c": -1}),
+    # 字迹太淡/浅，需要加深
+    (["字迹太淡", "字太淡", "太淡了", "太浅了", "字迹浅", "看不清字", "字不清楚"], {"contrast": 0.3, "c": -3}),
+    (["加深", "深一点", "更深", "颜色深"], {"contrast": 0.2, "c": -2}),
+    (["淡", "浅"], {"contrast": 0.15, "c": -2}),
     
     # 字迹太深/黑，需要变浅
     (["太深", "太黑", "字太黑", "太重"], {"contrast": -0.2, "c": 3}),
@@ -74,8 +81,11 @@ class AIAgent:
     """
     
     def __init__(self):
-        self.api_key = settings.DEEPSEEK_API_KEY
+        # 优先使用从 api_keys.py 导入的 API Key
+        self.api_key = DEEPSEEK_API_KEY or settings.DEEPSEEK_API_KEY
         self.api_url = settings.DEEPSEEK_API_URL
+        if self.api_key:
+            print(f"DeepSeek API Key loaded (length: {len(self.api_key)})")
     
     async def interpret_instruction(
         self, 
@@ -115,16 +125,17 @@ class AIAgent:
     def _rule_based_adjust(self, instruction: str, current: dict) -> Optional[dict]:
         """
         Rule-based parameter adjustment for common requests
-        使用列表格式的规则，只匹配第一个（最具体的）规则
+        使用列表格式的规则，按优先级匹配
         """
         result = current.copy()
+        matched = False
         
-        # 遍历规则列表，只匹配第一个规则（规则按优先级排序）
+        # 遍历规则列表
         for keywords, adjustments in ADJUSTMENT_RULES:
             # 检查是否有任何关键词匹配
             for keyword in keywords:
                 if keyword in instruction:
-                    print(f"Rule matched: '{keyword}' -> {adjustments}")
+                    matched = True
                     # 应用调整
                     for param, delta in adjustments.items():
                         if param == "sharpen":
@@ -134,11 +145,12 @@ class AIAgent:
                                 result[param] = delta
                             else:
                                 result[param] = result[param] + delta
-                    
-                    # 只匹配一个规则后立即返回，避免累加
-                    result = self._clamp_params(result)
-                    print(f"Rule-based result: {result}")
-                    return result
+                    break  # 每条规则只匹配一次
+        
+        if matched:
+            # Clamp values to valid ranges
+            result = self._clamp_params(result)
+            return result
         
         return None
     
@@ -146,28 +158,27 @@ class AIAgent:
         """Ensure parameters are within valid ranges"""
         clamped = params.copy()
         
-        # block_size: 3-31, must be odd
+        # block_size: 3-99, must be odd
         if "block_size" in clamped:
-            clamped["block_size"] = max(3, min(31, int(clamped["block_size"])))
+            clamped["block_size"] = max(3, min(99, clamped["block_size"]))
             if clamped["block_size"] % 2 == 0:
                 clamped["block_size"] += 1
         
-        # c: -5 to 15 (关键！太小的负值会导致黑底白字)
-        # c值控制二值化阈值偏移，负值使字更深但背景可能变灰/黑
+        # c: -50 to 50
         if "c" in clamped:
-            clamped["c"] = max(-5, min(15, int(clamped["c"])))
+            clamped["c"] = max(-50, min(50, clamped["c"]))
         
-        # contrast: 0.5 to 2.0
+        # contrast: 0.1 to 3.0
         if "contrast" in clamped:
-            clamped["contrast"] = max(0.5, min(2.0, float(clamped["contrast"])))
+            clamped["contrast"] = max(0.1, min(3.0, clamped["contrast"]))
         
-        # brightness: -50 to 50
+        # brightness: -100 to 100
         if "brightness" in clamped:
-            clamped["brightness"] = max(-50, min(50, int(clamped["brightness"])))
+            clamped["brightness"] = max(-100, min(100, clamped["brightness"]))
         
-        # denoise_strength: 0 to 20
+        # denoise_strength: 0 to 30
         if "denoise_strength" in clamped:
-            clamped["denoise_strength"] = max(0, min(20, int(clamped["denoise_strength"])))
+            clamped["denoise_strength"] = max(0, min(30, clamped["denoise_strength"]))
         
         return clamped
     
@@ -179,51 +190,54 @@ class AIAgent:
 
 用户会用自然语言描述他们对图片处理效果的不满意之处，你需要理解用户的意图并返回调整后的参数。
 
-## 重要警告：
-- 调整幅度要**温和保守**，每次只做小幅调整
-- 绝对不要返回极端值，否则会破坏图像效果
-- 目标始终是：白色背景 + 清晰黑色字迹
-
 ## 可调整的参数及其作用：
 
 1. **contrast** (对比度, 范围: 0.5-2.0, 默认: 1.0)
    - 控制图像整体对比度
-   - 用户说"字迹太淡"时，小幅增加到 1.2-1.4
-   - 用户说"太黑"时，小幅降低到 0.8-0.9
-   - **不要超过1.5，否则效果会很差**
+   - 值越大，黑白对比越明显，字迹越清晰
+   - 用户说"字迹太淡"、"看不清"时，增加此值 (如 1.3-1.5)
+   - 用户说"太黑"、"太深"时，降低此值 (如 0.7-0.9)
 
 2. **brightness** (亮度, 范围: -50 到 50, 默认: 0)
    - 控制整体亮度
-   - 用户说"太暗"时，增加 5-15
-   - 用户说"背景不够白"时，增加 5-10
+   - 正值使图像更亮，负值使图像更暗
+   - 用户说"太暗"时，增加此值 (如 10-20)
+   - 用户说"太亮"、"背景不够白"时，可能需要调整
 
-3. **c** (阈值偏移, 范围: -5 到 15, 默认: 2)
-   - **关键参数！** 控制二值化阈值
-   - **警告：c值绝对不能低于-5，否则会变成黑底白字！**
-   - 用户说"背景不够白"时，增加到 4-8
-   - 用户说"字迹太淡"时，降低到 0 或 -2（最多到-3）
-   - 正常调整范围：-3 到 10
+3. **c** (阈值偏移, 范围: -20 到 20, 默认: 2)
+   - 控制二值化阈值，影响字迹深浅和背景白度
+   - 值越小(负值)，字迹越深/黑，背景可能变灰
+   - 值越大(正值)，背景越白，但字迹可能变淡
+   - 用户说"背景不够白"、"背景灰"时，增加此值 (如 5-10)
+   - 用户说"字迹太淡"时，降低此值 (如 -2 到 -5)
 
-4. **block_size** (块大小, 范围: 5-25, 必须是奇数, 默认: 11)
+4. **block_size** (块大小, 范围: 3-31, 必须是奇数, 默认: 11)
+   - 自适应阈值的邻域大小
    - 值越大，字迹越粗
-   - 用户说"字太细"时，增加到 13-15
-   - 用户说"字太粗"时，降低到 7-9
+   - 用户说"字太细"时，增加此值 (如 13-15)
+   - 用户说"字太粗"时，降低此值 (如 7-9)
 
 5. **denoise_strength** (降噪强度, 范围: 0-20, 默认: 10)
-   - 用户说"噪点多"时，增加到 13-15
-   - 用户说"模糊"时，降低到 5-7
+   - 控制降噪程度
+   - 值越大，图像越平滑，噪点越少，但可能丢失细节
+   - 用户说"噪点多"、"杂点多"时，增加此值 (如 15-18)
+   - 用户说"模糊"、"不清晰"时，降低此值 (如 5-8)
 
-## 常见用户需求的参数调整：
+## 常见用户需求的参数调整建议：
 
-- "字迹太淡/加深一点": {"contrast": 1.2, "c": 0}
-- "背景不够白": {"c": 6, "brightness": 8}
-- "对比度太低": {"contrast": 1.3}
-- "太模糊": {"denoise_strength": 6}
-- "噪点太多": {"denoise_strength": 14}
+- "字迹太淡/加深": contrast +0.2~0.4, c -2~-5
+- "背景不够白/背景灰": c +3~+8, brightness +5~+15
+- "对比度太低": contrast +0.3~0.5
+- "太模糊/不清晰": denoise_strength -3~-5
+- "噪点太多": denoise_strength +5~+8
+- "字太细": block_size +2~+4
+- "字太粗": block_size -2~-4
 
-## 输出格式：
-只返回纯JSON对象，包含需要调整的参数的**最终值**。
-例如：{"contrast": 1.2, "c": 0}
+## 输出格式要求：
+
+只返回一个纯JSON对象，包含需要调整的参数的**最终值**（不是增量）。
+例如，如果当前contrast是1.0，用户要加深，你应该返回：
+{"contrast": 1.3, "c": -2}
 
 不要返回任何解释文字，只返回JSON。"""
 

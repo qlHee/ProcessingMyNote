@@ -1,7 +1,7 @@
 /**
  * AIAssistant - Natural language image adjustment
  */
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { Input, Button, Card, Typography, Space, Alert, Slider, Collapse, message } from 'antd'
 import { SendOutlined, RobotOutlined, SettingOutlined, RotateLeftOutlined, RotateRightOutlined } from '@ant-design/icons'
 import { aiAPI } from '../../api'
@@ -28,8 +28,6 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate }) {
   const [c, setC] = useState(2)
   const [blockSize, setBlockSize] = useState(11)
   const [denoiseStrength, setDenoiseStrength] = useState(10)
-  
-  const applyTimeoutRef = useRef(null)
 
   const { reprocessNote } = useNotesStore()
 
@@ -51,13 +49,8 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate }) {
     }
   }
 
-  // 参数变化后延迟应用
-  const handleSliderAfterChange = (key, value) => {
-    // 清除之前的延迟
-    if (applyTimeoutRef.current) {
-      clearTimeout(applyTimeoutRef.current)
-    }
-    
+  // 参数变化后应用
+  const handleSliderComplete = (key, value) => {
     const params = {
       contrast: key === 'contrast' ? value : contrast,
       brightness: key === 'brightness' ? value : brightness,
@@ -66,6 +59,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate }) {
       denoise_strength: key === 'denoise_strength' ? value : denoiseStrength,
     }
     
+    console.log('Applying params:', params)
     applyParams(params)
   }
 
@@ -166,6 +160,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate }) {
       {/* Manual Parameter Adjustment */}
       <Collapse
         ghost
+        defaultActiveKey={['manual']}
         items={[
           {
             key: 'manual',
@@ -202,7 +197,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate }) {
                     step={0.1}
                     value={contrast}
                     onChange={setContrast}
-                    onAfterChange={(v) => handleSliderAfterChange('contrast', v)}
+                    onChangeComplete={(v) => handleSliderComplete('contrast', v)}
                     disabled={loading}
                   />
                 </div>
@@ -213,7 +208,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate }) {
                     max={50}
                     value={brightness}
                     onChange={setBrightness}
-                    onAfterChange={(v) => handleSliderAfterChange('brightness', v)}
+                    onChangeComplete={(v) => handleSliderComplete('brightness', v)}
                     disabled={loading}
                   />
                 </div>
@@ -224,7 +219,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate }) {
                     max={20}
                     value={c}
                     onChange={setC}
-                    onAfterChange={(v) => handleSliderAfterChange('c', v)}
+                    onChangeComplete={(v) => handleSliderComplete('c', v)}
                     disabled={loading}
                   />
                 </div>
@@ -236,7 +231,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate }) {
                     step={2}
                     value={blockSize}
                     onChange={setBlockSize}
-                    onAfterChange={(v) => handleSliderAfterChange('block_size', v)}
+                    onChangeComplete={(v) => handleSliderComplete('block_size', v)}
                     disabled={loading}
                   />
                 </div>
@@ -247,7 +242,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate }) {
                     max={20}
                     value={denoiseStrength}
                     onChange={setDenoiseStrength}
-                    onAfterChange={(v) => handleSliderAfterChange('denoise_strength', v)}
+                    onChangeComplete={(v) => handleSliderComplete('denoise_strength', v)}
                     disabled={loading}
                   />
                 </div>

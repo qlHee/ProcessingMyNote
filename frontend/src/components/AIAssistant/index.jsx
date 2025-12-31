@@ -78,10 +78,9 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, onCrop 
     }
   }
 
-  // 参数变化后立即应用
+  // 参数变化后立即应用（松开滑块时触发）
   const handleParamChange = async (key, value) => {
     const newParams = { ...manualParams, [key]: value }
-    setManualParams(newParams)
     saveToHistory(newParams)
     await applyParams(newParams)
   }
@@ -209,17 +208,15 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, onCrop 
                     size="small"
                     onClick={() => onRotate?.(-90)}
                     disabled={loading}
-                  >
-                    左旋转
-                  </Button>
+                    title="左旋转90°"
+                  />
                   <Button
                     icon={<RotateRightOutlined />}
                     size="small"
                     onClick={() => onRotate?.(90)}
                     disabled={loading}
-                  >
-                    右旋转
-                  </Button>
+                    title="右旋转90°"
+                  />
                   <Button
                     icon={<ScissorOutlined />}
                     size="small"
@@ -237,6 +234,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, onCrop 
                     max={2.0}
                     step={0.1}
                     value={manualParams.contrast}
+                    onChange={(v) => setManualParams({ ...manualParams, contrast: v })}
                     onChangeComplete={(v) => handleParamChange('contrast', v)}
                   />
                 </div>
@@ -246,6 +244,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, onCrop 
                     min={-50}
                     max={50}
                     value={manualParams.brightness}
+                    onChange={(v) => setManualParams({ ...manualParams, brightness: v })}
                     onChangeComplete={(v) => handleParamChange('brightness', v)}
                   />
                 </div>
@@ -255,6 +254,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, onCrop 
                     min={-20}
                     max={20}
                     value={manualParams.c}
+                    onChange={(v) => setManualParams({ ...manualParams, c: v })}
                     onChangeComplete={(v) => handleParamChange('c', v)}
                   />
                 </div>
@@ -265,6 +265,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, onCrop 
                     max={31}
                     step={2}
                     value={manualParams.block_size}
+                    onChange={(v) => setManualParams({ ...manualParams, block_size: v })}
                     onChangeComplete={(v) => handleParamChange('block_size', v)}
                   />
                 </div>
@@ -274,6 +275,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, onCrop 
                     min={0}
                     max={20}
                     value={manualParams.denoise_strength}
+                    onChange={(v) => setManualParams({ ...manualParams, denoise_strength: v })}
                     onChangeComplete={(v) => handleParamChange('denoise_strength', v)}
                   />
                 </div>

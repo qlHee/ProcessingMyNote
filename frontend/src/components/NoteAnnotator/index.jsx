@@ -39,12 +39,16 @@ export default function NoteAnnotator({
 
   // Fetch annotations
   useEffect(() => {
-    fetchAnnotations()
+    if (noteId) {
+      fetchAnnotations()
+    }
   }, [noteId])
 
   const fetchAnnotations = async () => {
     try {
+      console.log('Fetching annotations for note:', noteId)
       const res = await annotationsAPI.getAll(noteId)
+      console.log('Fetched annotations:', res.data)
       setAnnotations(res.data)
     } catch (error) {
       console.error('Failed to fetch annotations:', error)
@@ -202,6 +206,7 @@ export default function NoteAnnotator({
       const annotation = annotations.find(a => a.id === id)
       if (!annotation) {
         message.error('标注不存在')
+        setLoading(false)
         return
       }
       
@@ -214,8 +219,9 @@ export default function NoteAnnotator({
         y: annotation.y
       }
       
-      console.log('Updating annotation:', id, updateData)
-      await annotationsAPI.update(noteId, id, updateData)
+      console.log('Updating annotation:', id, 'with data:', updateData)
+      const response = await annotationsAPI.update(noteId, id, updateData)
+      console.log('Update response:', response.data)
       
       setEditingId(null)
       setEditContent('')
@@ -483,9 +489,11 @@ export default function NoteAnnotator({
             <div className="annotation-list">
               {annotations.filter(a => parseAnnotation(a).type === 'text').map(annotation => {
                 const parsed = parseAnnotation(annotation)
+                // 从原始数组获取最新的annotation对象
+                const currentAnnotation = annotations.find(a => a.id === annotation.id) || annotation
                 
                 if (editingId === annotation.id) {
-                  const currentFontSize = annotation.font_size || annotation.fontSize || fontSize
+                  const currentFontSize = currentAnnotation.font_size || currentAnnotation.fontSize || fontSize
                   return (
                     <div key={annotation.id} className="annotation-edit-form">
                       <TextArea
@@ -532,7 +540,7 @@ export default function NoteAnnotator({
                         icon={<EditOutlined />}
                         onClick={() => {
                           setEditingId(annotation.id)
-                          setEditContent(annotation.content)
+                          setEditContent(currentAnnotation.content)
                         }}
                       />
                       <Popconfirm

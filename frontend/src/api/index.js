@@ -118,6 +118,9 @@ const parseFilename = (contentDisposition, defaultName) => {
 export const exportAPI = {
   exportNote: async (noteId) => {
     const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('未登录，请先登录');
+    }
     const response = await fetch(`/api/export/note/${noteId}`, {
       method: 'GET',
       headers: {
@@ -126,7 +129,9 @@ export const exportAPI = {
     });
     
     if (!response.ok) {
-      throw new Error('导出失败');
+      const errorText = await response.text();
+      console.error('Export failed:', response.status, errorText);
+      throw new Error(`导出失败: ${response.status}`);
     }
     
     const blob = await response.blob();

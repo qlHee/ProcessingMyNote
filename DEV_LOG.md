@@ -1,5 +1,40 @@
 # Processing My Note - 开发日志
 
+## 项目信息
+
+### 启动方式
+```bash
+# 后端
+cd backend
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+
+# 前端
+cd frontend
+npm install
+npm run dev
+```
+
+访问: http://localhost:5173
+
+### 技术栈
+**后端**
+- FastAPI + SQLAlchemy (异步)
+- SQLite 数据库
+- OpenCV 图像处理
+- PaddleOCR 文字识别
+- DeepSeek API (AI 调整)
+
+**前端**
+- React + Vite
+- Ant Design UI 组件库
+- Zustand 状态管理
+- React Router 路由
+- Axios HTTP 客户端
+
+---
+
 ## v0.1: 后端基础架构 ✅
 **日期:** 2024-12-28
 
@@ -284,39 +319,6 @@ class Config:
 ### UI 对比
 **旧版**: 横向按钮 + 下拉颜色选择 + Ant Design List  
 **新版**: 网格工具按钮 + 圆点颜色选择 + 卡片列表
-
----
-
-### 启动方式
-```bash
-# 后端
-cd backend
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-
-# 前端
-cd frontend
-npm install
-npm run dev
-```
-
-访问: http://localhost:5173
-
-### 技术栈
-**后端**
-- FastAPI + SQLAlchemy (异步)
-- SQLite 数据库
-- OpenCV 图像处理
-- PaddleOCR 文字识别
-- DeepSeek API (AI 调整)
-
-**前端**
-- React + Vite
-- Ant Design UI 组件库
-- Zustand 状态管理
-- React Router 路由
-- Axios HTTP 客户端
 
 ---
 

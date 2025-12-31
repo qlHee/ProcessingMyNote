@@ -191,23 +191,24 @@ export default function NoteAnnotator({
     setLoading(true)
     try {
       const annotation = annotations.find(a => a.id === id)
+      const currentFontSize = annotation.font_size || annotation.fontSize || fontSize
+      const currentColor = annotation.color || color
+      
       await annotationsAPI.update(noteId, id, { 
         content: editContent,
-        fontSize: annotation.fontSize,
-        color: annotation.color,
+        fontSize: currentFontSize,
+        color: currentColor,
         x: annotation.x,
         y: annotation.y
       })
-      setAnnotations(annotations.map(a => 
-        a.id === id ? { ...a, content: editContent, fontSize: annotation.fontSize, color: annotation.color } : a
-      ))
       setEditingId(null)
       setEditContent('')
       message.success('更新成功')
       // Refresh to get latest data from server
-      fetchAnnotations()
+      await fetchAnnotations()
     } catch (error) {
-      message.error('更新失败')
+      console.error('Update error:', error)
+      message.error('更新失败: ' + (error.response?.data?.detail || error.message))
     } finally {
       setLoading(false)
     }
@@ -467,6 +468,7 @@ export default function NoteAnnotator({
                 const parsed = parseAnnotation(annotation)
                 
                 if (editingId === annotation.id) {
+                  const currentFontSize = annotation.font_size || annotation.fontSize || fontSize
                   return (
                     <div key={annotation.id} className="annotation-edit-form">
                       <TextArea
@@ -478,10 +480,10 @@ export default function NoteAnnotator({
                       />
                       <div className="edit-actions">
                         <Select
-                          value={annotation.fontSize || fontSize}
+                          value={currentFontSize}
                           onChange={(val) => {
                             setAnnotations(annotations.map(a => 
-                              a.id === annotation.id ? { ...a, fontSize: val } : a
+                              a.id === annotation.id ? { ...a, fontSize: val, font_size: val } : a
                             ))
                           }}
                           size="small"
@@ -796,10 +798,10 @@ export default function NoteAnnotator({
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       <Text style={{ fontSize: '12px', marginRight: '4px' }}>字号:</Text>
                       <Select
-                        value={annotation.fontSize || fontSize}
+                        value={annotation.font_size || annotation.fontSize || fontSize}
                         onChange={(val) => {
                           setAnnotations(annotations.map(a => 
-                            a.id === annotation.id ? { ...a, fontSize: val } : a
+                            a.id === annotation.id ? { ...a, fontSize: val, font_size: val } : a
                           ))
                         }}
                         size="small"

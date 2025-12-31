@@ -364,11 +364,27 @@ export default function NoteDetail() {
               size="large"
             />
             
-            <img
-              src={notesAPI.getImageUrl(notes[fullscreenIndex].id, imageMode)}
-              alt={notes[fullscreenIndex].title}
-              className="fullscreen-image"
-            />
+            {/* Use NoteAnnotator in fullscreen for processed images */}
+            {imageMode === 'processed' ? (
+              <div className="fullscreen-annotator-container">
+                <NoteAnnotator
+                  noteId={notes[fullscreenIndex].id}
+                  imageSrc={notesAPI.getImageUrl(notes[fullscreenIndex].id, imageMode)}
+                  annotationMode={null}
+                  setAnnotationMode={() => {}}
+                  fontSize={fontSize}
+                  setFontSize={setFontSize}
+                  onAnnotationChange={() => {}}
+                  panelMode={false}
+                />
+              </div>
+            ) : (
+              <img
+                src={notesAPI.getImageUrl(notes[fullscreenIndex].id, imageMode)}
+                alt={notes[fullscreenIndex].title}
+                className="fullscreen-image"
+              />
+            )}
             
             <Button
               className="fullscreen-nav fullscreen-nav-next"

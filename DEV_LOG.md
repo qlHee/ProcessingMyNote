@@ -223,37 +223,6 @@ frontend/src/
 - ✅ 修复子文件夹显示逻辑（后端支持 folder_ids 参数）
 - ✅ 修复 renderNoteCard 函数语法错误
 
-### 启动方式
-```bash
-# 后端
-cd backend
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-
-# 前端
-cd frontend
-npm install
-npm run dev
-```
-
-访问: http://localhost:5173
-
-### 技术栈
-**后端**
-- FastAPI + SQLAlchemy (异步)
-- SQLite 数据库
-- OpenCV 图像处理
-- PaddleOCR 文字识别
-- DeepSeek API (AI 调整)
-
-**前端**
-- React + Vite
-- Ant Design UI 组件库
-- Zustand 状态管理
-- React Router 路由
-- Axios HTTP 客户端
-
 ---
 
 ## v1.1: 标注系统重构与UI优化 🎨
@@ -317,3 +286,36 @@ class Config:
 **新版**: 网格工具按钮 + 圆点颜色选择 + 卡片列表
 
 ---
+
+### 启动方式
+```bash
+# 后端
+cd backend
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+
+# 前端
+cd frontend
+npm install
+npm run dev
+```
+
+访问: http://localhost:5173
+
+### 技术栈
+**后端**
+- FastAPI + SQLAlchemy (异步)
+- SQLite 数据库
+- OpenCV 图像处理
+- PaddleOCR 文字识别
+- DeepSeek API (AI 调整)
+
+**前端**
+- React + Vite
+- Ant Design UI 组件库
+- Zustand 状态管理
+- React Router 路由
+- Axios HTTP 客户端
+
+

@@ -177,6 +177,24 @@
   user-select: none;
 }
 
+.fullscreen-annotator-container {
+  max-width: 90%;
+  max-height: 90%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fullscreen-annotator-container .note-annotator-overlay {
+  max-width: 100%;
+  max-height: 90vh;
+}
+
+.fullscreen-annotator-container .note-image {
+  max-width: 100%;
+  max-height: 90vh;
+}
+
 .fullscreen-close {
   position: absolute;
   top: 20px;

@@ -176,7 +176,6 @@ async def upload_note(
             title=auto_title,
             original_path=str(original_path.relative_to(settings.BASE_DIR)),
             processed_path=str(processed_path.relative_to(settings.BASE_DIR)),
-            ocr_text=None,
             folder_id=folder_id,
             user_id=current_user.id,
             processing_params=processor.params.to_dict()

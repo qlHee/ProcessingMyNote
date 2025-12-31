@@ -109,18 +109,7 @@ def render_annotations_to_image(note: Note, annotations: list) -> str:
         y = int(annotation.y * height / 100)
         
         if ann_type == 'text':
-            # 文字标注 - 绘制标记点和文字
-            marker_radius = max(6, int(min(width, height) / 100))
-            
-            # 绘制标记点（带颜色的圆点）
-            draw.ellipse(
-                [x - marker_radius, y - marker_radius, x + marker_radius, y + marker_radius],
-                fill=color_rgb + (255,),
-                outline=(255, 255, 255, 255),
-                width=2
-            )
-            
-            # 绘制文字
+            # 文字标注 - 直接绘制文字（不绘制圆点）
             text_content = str(ann_data)
             text_font_size = max(14, int(font_size * min(width, height) / 50))
             
@@ -132,8 +121,8 @@ def render_annotations_to_image(note: Note, annotations: list) -> str:
             except:
                 font = ImageFont.load_default()
             
-            # 计算文字位置（在标记点右侧）
-            text_x = x + marker_radius + 8
+            # 计算文字位置（直接在标注点位置）
+            text_x = x
             text_y = y - text_font_size // 2
             
             # 获取文字边界框
@@ -143,7 +132,9 @@ def render_annotations_to_image(note: Note, annotations: list) -> str:
             
             # 确保不超出图片边界
             if text_x + text_width + 10 > width:
-                text_x = x - marker_radius - text_width - 8
+                text_x = width - text_width - 10
+            if text_x < 5:
+                text_x = 5
             if text_y < 5:
                 text_y = 5
             if text_y + text_height > height - 5:

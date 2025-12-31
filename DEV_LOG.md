@@ -450,3 +450,225 @@ const filename = decodeURIComponent(utf8Match[1]);
 
 ---
 
+## v1.4: 图像调整UI优化与撤销重做功能 🎨
+**日期:** 2024-12-31
+
+### 核心功能
+1. **AI智能调整界面优化**
+   - 压缩示例语言显示（5条占2行）
+   - 调整字体和按钮大小，提升视觉效果
+   - 更新示例文本为更实用的描述
+
+2. **撤销/重做功能**
+   - 实现历史记录栈管理
+   - 支持手动参数调整的撤销/重做
+   - 支持旋转操作的撤销/重做
+   - 支持AI智能调整的撤销/重做
+   - 撤销/重做按钮状态智能禁用
+
+3. **手动参数调整优化**
+   - 删除"应用参数"按钮，拖动滑块后立即应用
+   - 使用 `onChangeComplete` 事件替代 `onAfterChange`（Ant Design 6.x）
+   - 添加左旋转、右旋转、裁剪按钮
+   - 旋转按钮只显示图标，节省空间
+   - 添加"恢复默认值"按钮
+   - 手动参数调整面板默认打开
+
+4. **参数顺序调整**
+   - 新顺序：降噪强度 → 块大小 → 阈值偏移 → 亮度 → 对比度
+   - 更符合用户调整习惯
+
+### Bug 修复
+- 修复手动参数调整后滑块回到原位的问题
+  - 根本原因：`fetchNote` 导致组件重新渲染，状态重置
+  - 解决方案：`onAdjustSuccess` 只刷新图片缓存，不重新获取笔记数据
+- 修复参数调整不生效的问题
+  - 使用 `initialParams` prop 初始化组件状态
+  - 使用 `useEffect` 确保只初始化一次
+- 修复旋转功能不生效的问题
+  - 确保旋转API正确调用并更新数据库
+
+### 技术细节
+**前端状态管理重构**
+```javascript
+// 使用 initialParams 初始化
+const [contrast, setContrast] = useState(initialParams?.contrast ?? DEFAULT_PARAMS.contrast)
+
+// 只初始化一次
+useEffect(() => {
+  if (initialParams && !initialized) {
+    // 初始化所有参数
+    setInitialized(true)
+  }
+}, [initialParams, initialized])
+
+// 历史记录管理
+const [history, setHistory] = useState([])
+const [historyIndex, setHistoryIndex] = useState(-1)
+
+const saveToHistory = (params) => {
+  const newHistory = history.slice(0, historyIndex + 1)
+  newHistory.push(params)
+  setHistory(newHistory)
+  setHistoryIndex(newHistory.length - 1)
+}
+```
+
+**参数应用优化**
+```javascript
+// 直接调用API，避免通过store导致状态重置
+const applyParams = async (params, saveHistory = true) => {
+  const response = await notesAPI.reprocess(noteId, params)
+  if (saveHistory) {
+    saveToHistory(params)
+  }
+  onAdjustSuccess?.() // 只刷新图片
+}
+```
+
+### UI改进
+- 撤销/重做按钮放在手动参数调整上方
+- 旋转按钮和恢复默认按钮在同一行
+- 旋转按钮宽度缩短，恢复默认按钮宽度加长
+- 所有按钮大小统一为 `small`
+
+### 提交记录
+- `37a0f42` - feat: 添加撤销/重做功能、旋转按钮只显示图标、恢复默认值按钮
+- `16ad6d5` - style: 调整旋转按钮和恢复默认按钮的宽度比例
+- `05c7eb0` - feat: 调整参数顺序，旋转功能支持撤销重做
+
+---
+
+## v1.5: DeepSeek AI集成与智能调整优化 🤖
+**日期:** 2024-12-31
+
+### 核心功能
+1. **DeepSeek API集成**
+   - 集成DeepSeek Chat API实现真正的AI智能调整
+   - 优先使用AI理解用户需求，失败后回退到规则匹配
+   - 从 `api_keys.py` 安全导入API密钥
+   - 支持复杂的自然语言描述
+
+2. **AI调整规则大幅扩展**
+   - 从12条规则扩展到40+条规则
+   - 支持更多自然语言变体
+   - 规则按优先级排序（更具体的规则优先）
+   - 覆盖字迹深浅、对比度、亮度、清晰度、噪点、背景等所有场景
+
+3. **AI提示词优化**
+   - 详细的参数说明和调整建议
+   - 强调 `c` 参数是调整字迹深浅的核心参数
+   - 明确 `contrast` 参数慎用，避免整体变暗
+   - 提供具体的调整示例
+
+4. **参数调整逻辑修复**
+   - 修复"加深字迹"导致背景变黑的问题
+   - 加深字迹只调整 `c` 参数（-3到-5），不调整 `contrast`
+   - 背景变白调整 `c` 参数（+3到+5）
+   - 对比度调整只在用户明确提到时才调整
+
+5. **示例语言顺序调整**
+   - 新顺序：太模糊了 → 噪点太多 → 对比度太低 → 背景不够白 → 字迹太淡，加深一点
+   - 最常用的功能放在最后，方便点击
+
+### Bug 修复
+- 修复登录失败问题
+  - 原因：`config.py` 被误删
+  - 解决：恢复 `config.py` 并正确导入 `api_keys.py`
+- 修复AI调整无法理解常见指令的问题
+  - 扩展规则库，支持"背景不够白"、"对比度太低"等常见描述
+- 修复"字迹太淡，加深一点"导致图片变成黑底的问题
+  - 修改规则和AI提示词，只调整 `c` 参数
+
+### 技术细节
+**API密钥配置**
+```python
+# backend/app/config.py
+try:
+    from app.config.api_keys import DEEPSEEK_API_KEY as _DEEPSEEK_API_KEY
+except ImportError:
+    _DEEPSEEK_API_KEY = ""
+
+class Settings(BaseSettings):
+    DEEPSEEK_API_KEY: str = _DEEPSEEK_API_KEY
+    DEEPSEEK_API_URL: str = "https://api.deepseek.com/v1/chat/completions"
+```
+
+**AI调整优先级**
+```python
+async def interpret_instruction(self, instruction: str, current_params: dict) -> dict:
+    # 1. 优先使用 DeepSeek API
+    if self.api_key:
+        try:
+            ai_result = await self._ai_adjust(instruction, current)
+            if ai_result != current:
+                return ai_result
+        except Exception as e:
+            print(f"AI API error: {e}, falling back to rule-based")
+    
+    # 2. 回退到规则匹配
+    rule_result = self._rule_based_adjust(instruction, current)
+    if rule_result:
+        return rule_result
+    
+    # 3. 无法理解，返回原参数
+    return current
+```
+
+**优化的AI提示词**
+```python
+system_prompt = """你是一个专业的图像处理参数调整助手。用户正在处理手写笔记的扫描图片（白纸黑字）...
+
+**参数详细说明：**
+1. **c** (-50 to 50，默认2): 阈值偏移 - 这是最重要的参数！
+   - 负值：字迹变深/变黑，同时保持背景白色
+   - 正值：背景变白，字迹可能变浅
+   - 注意：调整字迹深浅主要用c参数，不要用contrast！
+
+2. **contrast** (0.1-3.0，默认1.0): 对比度
+   - 只在用户明确提到"对比度"时才调整
+   - 增加对比度会让整体变暗，慎用！
+...
+
+**示例：**
+用户说"字迹太淡了，加深一点" → {"c": -4}
+用户说"背景不够白" → {"c": 4}
+用户说"对比度太低" → {"contrast": 0.3}
+"""
+```
+
+**扩展的规则库**
+```python
+ADJUSTMENT_RULES = [
+    # 字迹深浅 - 只调整c参数
+    (["字迹太淡", "字太淡", "太淡了", ...], {"c": -4}),
+    (["加深", "深一点", "更深", ...], {"c": -3}),
+    
+    # 对比度 - 明确提到才调整
+    (["对比度太低", "对比度低", ...], {"contrast": 0.4}),
+    
+    # 背景 - 调整c和brightness
+    (["背景不够白", "背景不白", ...], {"c": 4, "brightness": 10}),
+    ...
+]
+```
+
+### AI功能特性
+- **智能理解**：支持各种自然语言变体
+- **精准调整**：根据用户描述严重程度调整参数幅度
+- **安全回退**：API失败时自动使用规则匹配
+- **参数优化**：temperature=0.1，获得更稳定的输出
+
+### UI改进
+- AI智能调整支持撤销/重做
+- 示例语言顺序优化
+- 后端控制台显示调整方式（AI或规则）
+
+### 提交记录
+- `a280270` - feat: AI智能调整支持撤销重做
+- `c88a69e` - feat: 大幅扩展AI智能调整规则，支持更多自然语言描述
+- `4d7dfdd` - feat: 集成DeepSeek API实现AI智能调整，修复登录问题
+- `e141255` - fix: 修复加深字迹导致背景变黑的问题，调整示例语言顺序
+
+---
+

@@ -1,10 +1,10 @@
 /**
  * AIAssistant - Natural language image adjustment
  */
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Input, Button, Card, Typography, Space, Alert, Slider, Collapse, message } from 'antd'
-import { SendOutlined, RobotOutlined, SettingOutlined, UndoOutlined, RedoOutlined, RotateLeftOutlined, RotateRightOutlined, ScissorOutlined } from '@ant-design/icons'
-import { aiAPI, notesAPI } from '../../api'
+import { SendOutlined, RobotOutlined, SettingOutlined, RotateLeftOutlined, RotateRightOutlined } from '@ant-design/icons'
+import { aiAPI } from '../../api'
 import { useNotesStore } from '../../stores'
 import './index.css'
 
@@ -19,70 +19,54 @@ const exampleInstructions = [
   '对比度太低',
 ]
 
-export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, onCrop }) {
+export default function AIAssistant({ noteId, onAdjustSuccess, onRotate }) {
   const [instruction, setInstruction] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
-  const [manualParams, setManualParams] = useState({
-    block_size: 11,
-    c: 2,
-    contrast: 1.0,
-    brightness: 0,
-    denoise_strength: 10,
-  })
-  const [history, setHistory] = useState([])
-  const [historyIndex, setHistoryIndex] = useState(-1)
+  const [contrast, setContrast] = useState(1.0)
+  const [brightness, setBrightness] = useState(0)
+  const [c, setC] = useState(2)
+  const [blockSize, setBlockSize] = useState(11)
+  const [denoiseStrength, setDenoiseStrength] = useState(10)
+  
+  const applyTimeoutRef = useRef(null)
 
   const { reprocessNote } = useNotesStore()
 
-  // 保存参数到历史记录
-  const saveToHistory = (params) => {
-    const newHistory = history.slice(0, historyIndex + 1)
-    newHistory.push({ ...params })
-    setHistory(newHistory)
-    setHistoryIndex(newHistory.length - 1)
-  }
-
-  // 撤销
-  const handleUndo = async () => {
-    if (historyIndex > 0) {
-      const prevParams = history[historyIndex - 1]
-      setHistoryIndex(historyIndex - 1)
-      setManualParams(prevParams)
-      await applyParams(prevParams)
-    }
-  }
-
-  // 重做
-  const handleRedo = async () => {
-    if (historyIndex < history.length - 1) {
-      const nextParams = history[historyIndex + 1]
-      setHistoryIndex(historyIndex + 1)
-      setManualParams(nextParams)
-      await applyParams(nextParams)
-    }
-  }
-
-  // 应用参数
+  // 应用参数（延迟执行，避免频繁调用）
   const applyParams = async (params) => {
     setLoading(true)
     try {
       const result = await reprocessNote(noteId, params)
       if (result.success) {
         onAdjustSuccess?.()
+      } else {
+        message.error(result.error || '调整失败')
       }
     } catch (error) {
       console.error('Apply params error:', error)
+      message.error('调整失败')
     } finally {
       setLoading(false)
     }
   }
 
-  // 参数变化后立即应用（松开滑块时触发）
-  const handleParamChange = async (key, value) => {
-    const newParams = { ...manualParams, [key]: value }
-    saveToHistory(newParams)
-    await applyParams(newParams)
+  // 参数变化后延迟应用
+  const handleSliderAfterChange = (key, value) => {
+    // 清除之前的延迟
+    if (applyTimeoutRef.current) {
+      clearTimeout(applyTimeoutRef.current)
+    }
+    
+    const params = {
+      contrast: key === 'contrast' ? value : contrast,
+      brightness: key === 'brightness' ? value : brightness,
+      c: key === 'c' ? value : c,
+      block_size: key === 'block_size' ? value : blockSize,
+      denoise_strength: key === 'denoise_strength' ? value : denoiseStrength,
+    }
+    
+    applyParams(params)
   }
 
   const handleAIAdjust = async () => {
@@ -98,7 +82,14 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, onCrop 
       
       if (res.data.success) {
         message.success(res.data.message)
-        setManualParams(res.data.new_params)
+        // 更新本地参数状态
+        if (res.data.new_params) {
+          setContrast(res.data.new_params.contrast || 1.0)
+          setBrightness(res.data.new_params.brightness || 0)
+          setC(res.data.new_params.c || 2)
+          setBlockSize(res.data.new_params.block_size || 11)
+          setDenoiseStrength(res.data.new_params.denoise_strength || 10)
+        }
         onAdjustSuccess?.()
       } else {
         message.warning(res.data.message)
@@ -172,26 +163,6 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, onCrop 
         )}
       </Card>
 
-      {/* Undo/Redo Buttons */}
-      <div className="undo-redo-bar">
-        <Button
-          icon={<UndoOutlined />}
-          size="small"
-          onClick={handleUndo}
-          disabled={historyIndex <= 0 || loading}
-        >
-          撤销
-        </Button>
-        <Button
-          icon={<RedoOutlined />}
-          size="small"
-          onClick={handleRedo}
-          disabled={historyIndex >= history.length - 1 || loading}
-        >
-          重做
-        </Button>
-      </div>
-
       {/* Manual Parameter Adjustment */}
       <Collapse
         ghost
@@ -201,7 +172,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, onCrop 
             label: <><SettingOutlined /> 手动参数调整</>,
             children: (
               <div className="manual-params">
-                {/* 旋转和裁剪按钮 */}
+                {/* 旋转按钮 */}
                 <div className="transform-buttons">
                   <Button
                     icon={<RotateLeftOutlined />}
@@ -209,74 +180,75 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, onCrop 
                     onClick={() => onRotate?.(-90)}
                     disabled={loading}
                     title="左旋转90°"
-                  />
+                  >
+                    左旋转
+                  </Button>
                   <Button
                     icon={<RotateRightOutlined />}
                     size="small"
                     onClick={() => onRotate?.(90)}
                     disabled={loading}
                     title="右旋转90°"
-                  />
-                  <Button
-                    icon={<ScissorOutlined />}
-                    size="small"
-                    onClick={() => onCrop?.()}
-                    disabled={loading}
                   >
-                    裁剪
+                    右旋转
                   </Button>
                 </div>
 
                 <div className="param-item">
-                  <Text>对比度: {manualParams.contrast.toFixed(1)}</Text>
+                  <Text>对比度: {contrast.toFixed(1)}</Text>
                   <Slider
                     min={0.5}
                     max={2.0}
                     step={0.1}
-                    value={manualParams.contrast}
-                    onChange={(v) => setManualParams({ ...manualParams, contrast: v })}
-                    onChangeComplete={(v) => handleParamChange('contrast', v)}
+                    value={contrast}
+                    onChange={setContrast}
+                    onAfterChange={(v) => handleSliderAfterChange('contrast', v)}
+                    disabled={loading}
                   />
                 </div>
                 <div className="param-item">
-                  <Text>亮度: {manualParams.brightness}</Text>
+                  <Text>亮度: {brightness}</Text>
                   <Slider
                     min={-50}
                     max={50}
-                    value={manualParams.brightness}
-                    onChange={(v) => setManualParams({ ...manualParams, brightness: v })}
-                    onChangeComplete={(v) => handleParamChange('brightness', v)}
+                    value={brightness}
+                    onChange={setBrightness}
+                    onAfterChange={(v) => handleSliderAfterChange('brightness', v)}
+                    disabled={loading}
                   />
                 </div>
                 <div className="param-item">
-                  <Text>阈值偏移 (C): {manualParams.c}</Text>
+                  <Text>阈值偏移 (C): {c}</Text>
                   <Slider
                     min={-20}
                     max={20}
-                    value={manualParams.c}
-                    onChange={(v) => setManualParams({ ...manualParams, c: v })}
-                    onChangeComplete={(v) => handleParamChange('c', v)}
+                    value={c}
+                    onChange={setC}
+                    onAfterChange={(v) => handleSliderAfterChange('c', v)}
+                    disabled={loading}
                   />
                 </div>
                 <div className="param-item">
-                  <Text>块大小: {manualParams.block_size}</Text>
+                  <Text>块大小: {blockSize}</Text>
                   <Slider
                     min={3}
                     max={31}
                     step={2}
-                    value={manualParams.block_size}
-                    onChange={(v) => setManualParams({ ...manualParams, block_size: v })}
-                    onChangeComplete={(v) => handleParamChange('block_size', v)}
+                    value={blockSize}
+                    onChange={setBlockSize}
+                    onAfterChange={(v) => handleSliderAfterChange('block_size', v)}
+                    disabled={loading}
                   />
                 </div>
                 <div className="param-item">
-                  <Text>降噪强度: {manualParams.denoise_strength}</Text>
+                  <Text>降噪强度: {denoiseStrength}</Text>
                   <Slider
                     min={0}
                     max={20}
-                    value={manualParams.denoise_strength}
-                    onChange={(v) => setManualParams({ ...manualParams, denoise_strength: v })}
-                    onChangeComplete={(v) => handleParamChange('denoise_strength', v)}
+                    value={denoiseStrength}
+                    onChange={setDenoiseStrength}
+                    onAfterChange={(v) => handleSliderAfterChange('denoise_strength', v)}
+                    disabled={loading}
                   />
                 </div>
               </div>

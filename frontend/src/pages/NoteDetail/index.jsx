@@ -35,6 +35,7 @@ export default function NoteDetail() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [fullscreenIndex, setFullscreenIndex] = useState(0)
   const [annotationRefreshKey, setAnnotationRefreshKey] = useState(0)
+  const [imageRefreshKey, setImageRefreshKey] = useState(0)
 
   const { currentNote, notes, loading, fetchNote, updateNote, deleteNote, clearCurrentNote } = useNotesStore()
   const { folders } = useFoldersStore()
@@ -153,15 +154,12 @@ export default function NoteDetail() {
     try {
       await notesAPI.rotate(currentNote.id, angle)
       message.success('旋转成功')
+      // 强制刷新图片（通过改变key来绕过浏览器缓存）
+      setImageRefreshKey(k => k + 1)
       fetchNote(id)
     } catch (error) {
       message.error('旋转失败: ' + (error.response?.data?.detail || error.message))
     }
-  }
-
-  // 裁剪图片（暂时显示提示，后续可以实现裁剪UI）
-  const handleCrop = () => {
-    message.info('裁剪功能开发中，敬请期待')
   }
 
   if (loading || !currentNote) {
@@ -170,6 +168,11 @@ export default function NoteDetail() {
         <Spin size="large" />
       </div>
     )
+  }
+
+  // 生成带时间戳的图片URL，用于绕过浏览器缓存
+  const getImageUrlWithCache = (noteId, type) => {
+    return `${notesAPI.getImageUrl(noteId, type)}?t=${imageRefreshKey}`
   }
 
   // Build folder path
@@ -255,9 +258,9 @@ export default function NoteDetail() {
             {/* Image with Annotation Overlay - only show annotations on processed image */}
             {imageMode === 'processed' ? (
               <NoteAnnotator
-                key={`image-annotator-${annotationRefreshKey}`}
+                key={`image-annotator-${annotationRefreshKey}-${imageRefreshKey}`}
                 noteId={currentNote.id}
-                imageSrc={notesAPI.getImageUrl(currentNote.id, imageMode)}
+                imageSrc={getImageUrlWithCache(currentNote.id, imageMode)}
                 annotationMode={annotationMode}
                 setAnnotationMode={setAnnotationMode}
                 fontSize={fontSize}
@@ -272,7 +275,7 @@ export default function NoteDetail() {
             ) : (
               <img
                 ref={imageRef}
-                src={notesAPI.getImageUrl(currentNote.id, imageMode)}
+                src={getImageUrlWithCache(currentNote.id, imageMode)}
                 alt={currentNote.title}
                 className="note-image"
                 draggable={false}
@@ -342,9 +345,11 @@ export default function NoteDetail() {
                 children: (
                   <AIAssistant 
                     noteId={currentNote.id} 
-                    onAdjustSuccess={() => fetchNote(id)}
+                    onAdjustSuccess={() => {
+                      setImageRefreshKey(k => k + 1)
+                      fetchNote(id)
+                    }}
                     onRotate={handleRotate}
-                    onCrop={handleCrop}
                   />
                 ),
               },
@@ -353,9 +358,9 @@ export default function NoteDetail() {
                 label: <><HighlightOutlined /> 标注</>,
                 children: (
                   <NoteAnnotator
-                    key={`panel-annotator-${annotationRefreshKey}`}
+                    key={`panel-annotator-${annotationRefreshKey}-${imageRefreshKey}`}
                     noteId={currentNote.id}
-                    imageSrc={notesAPI.getImageUrl(currentNote.id, imageMode)}
+                    imageSrc={getImageUrlWithCache(currentNote.id, imageMode)}
                     annotationMode={annotationMode}
                     setAnnotationMode={setAnnotationMode}
                     fontSize={fontSize}

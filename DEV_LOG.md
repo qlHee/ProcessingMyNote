@@ -318,4 +318,83 @@ npm run dev
 - React Router 路由
 - Axios HTTP 客户端
 
+---
+
+## v1.2: 标注功能完善与Bug修复 🔧
+**日期:** 2024-12-31
+
+### 核心改进
+1. ✅ **标注颜色功能重构**
+   - 将 `color` 状态从组件内部提升到父组件
+   - 通过 props 传递颜色状态，避免组件刷新时重置
+   - 确保颜色选择在所有场景下正确保持
+   - 修复后端 Schema 中 `color` 字段的默认值设置
+
+2. ✅ **文字标注列表编辑修复**
+   - 修复列表编辑保存后内容无法更新的问题
+   - 实现列表编辑的内联更新逻辑
+   - 添加完整字号选项（0.8-3.0）
+   - 修复编辑按钮事件冒泡问题
+
+3. ✅ **标注同步机制**
+   - 添加 `annotationRefreshKey` 状态
+   - 实现图片区域和面板区域标注双向同步
+   - 确保列表编辑后图片标注实时更新
+   - 使用 `key` 属性强制组件刷新
+
+4. ✅ **全屏查看优化**
+   - 修复全屏模式下标注位置错乱问题
+   - 调整容器和图片尺寸策略
+   - 使用 `inline-block` 让标注层适应图片实际尺寸
+   - 确保标注在全屏时显示在正确位置
+
+5. ✅ **清空标注功能**
+   - 添加"清空所有标注"按钮
+   - 批量删除所有标注
+   - 带确认对话框防止误操作
+   - 显示标注数量提示
+
+### Bug 修复
+- ✅ 修复标注颜色无论选择什么都变成蓝色的问题
+- ✅ 修复文字标注列表编辑后无法保存的问题
+- ✅ 修复列表更新后图片标注不同步的问题
+- ✅ 修复全屏模式下标注位置错位到图片外的问题
+- ✅ 修复编辑时字号显示不正确的问题
+- ✅ 修复后端 `color` 字段 Schema 映射问题
+
+### 技术细节
+**状态管理优化**
+```jsx
+// 父组件管理颜色状态
+const [color, setColor] = useState('#1890ff')
+const [annotationRefreshKey, setAnnotationRefreshKey] = useState(0)
+
+// 传递给子组件
+<NoteAnnotator
+  color={color}
+  setColor={setColor}
+  onAnnotationChange={() => {
+    fetchNote(id)
+    setAnnotationRefreshKey(k => k + 1)  // 触发刷新
+  }}
+/>
+```
+
+**全屏定位修复**
+```css
+.fullscreen-annotator-container .note-annotator-overlay {
+  position: relative;
+  display: inline-block;  /* 适应图片尺寸 */
+}
+```
+
+### 提交记录
+- `5ced293` - 修复颜色 props 传递
+- `b94eca2` - 实现标注同步机制
+- `4b72ac2` - 修复列表编辑保存
+- `1014bb2` - 修复全屏标注定位
+- `8c092a2` - 添加调试日志
+- `410df95` - 详细更新日志
+
+---
 

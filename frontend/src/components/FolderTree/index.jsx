@@ -10,8 +10,10 @@ import {
   EditOutlined,
   DeleteOutlined,
   MoreOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons'
 import { useFoldersStore, useNotesStore } from '../../stores'
+import { exportAPI } from '../../api'
 import './index.css'
 
 export default function FolderTree({ collapsed }) {
@@ -151,6 +153,20 @@ export default function FolderTree({ collapsed }) {
                     onClick: (e) => {
                       e.domEvent.stopPropagation()
                       handleEdit(folder)
+                    },
+                  },
+                  {
+                    key: 'export',
+                    icon: <DownloadOutlined />,
+                    label: '导出',
+                    onClick: async (e) => {
+                      e.domEvent.stopPropagation()
+                      try {
+                        await exportAPI.exportFolder(folder.id)
+                        message.success('导出成功')
+                      } catch (error) {
+                        message.error('导出失败')
+                      }
                     },
                   },
                   {

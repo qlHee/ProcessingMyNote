@@ -85,4 +85,72 @@ export const aiAPI = {
     api.post('/ai/adjust/', { note_id: noteId, instruction }),
 };
 
+// Export API
+export const exportAPI = {
+  exportNote: async (noteId) => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`/api/export/note/${noteId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error('导出失败');
+    }
+    
+    const blob = await response.blob();
+    const contentDisposition = response.headers.get('content-disposition');
+    let filename = 'note.jpg';
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1].replace(/['"]/g, '');
+      }
+    }
+    
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
+  exportFolder: async (folderId) => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`/api/export/folder/${folderId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error('导出失败');
+    }
+    
+    const blob = await response.blob();
+    const contentDisposition = response.headers.get('content-disposition');
+    let filename = 'folder.zip';
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1].replace(/['"]/g, '');
+      }
+    }
+    
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
+};
+
 export default api;

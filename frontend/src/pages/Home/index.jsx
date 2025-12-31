@@ -22,10 +22,11 @@ import {
   UploadOutlined,
   CheckSquareOutlined,
   CheckOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons'
 import { useNotesStore, useFoldersStore, useTagsStore, useAuthStore } from '../../stores'
 import UploadModal from '../../components/UploadModal'
-import { notesAPI } from '../../api'
+import { notesAPI, exportAPI } from '../../api'
 import './index.css'
 
 export default function Home() {
@@ -260,6 +261,20 @@ export default function Home() {
         e.domEvent.stopPropagation()
         setSelectedNote(note)
         setCopyModalVisible(true)
+      },
+    },
+    {
+      key: 'export',
+      icon: <DownloadOutlined />,
+      label: '导出',
+      onClick: async (e) => {
+        e.domEvent.stopPropagation()
+        try {
+          await exportAPI.exportNote(note.id)
+          message.success('导出成功')
+        } catch (error) {
+          message.error('导出失败')
+        }
       },
     },
     {

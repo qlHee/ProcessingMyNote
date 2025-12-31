@@ -354,7 +354,8 @@ export default function NoteAnnotator({
         document.removeEventListener('mouseup', handleDragEnd)
       }
     }
-  }, [draggingId])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draggingId, annotations, hasDragged, dragOffset, dragStartPos])
 
   // Add drawing event listeners
   useEffect(() => {

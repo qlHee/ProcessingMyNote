@@ -106,7 +106,7 @@ class AnnotationResponse(BaseModel):
 5. ✅ 字号显示不正确 - 兼容font_size和fontSize双字段
 
 ### 🔧 开发规范
-1. **不要修改v1.1分支** - 所有新功能在v1.2分支开发
+1. **开发日志** - 每次把最新版本保存到新分支并提交的时候都要在开发日志补充新分支的内容。
 2. **状态提升** - 共享状态（color, fontSize）在父组件管理
 3. **组件刷新** - 使用key属性强制刷新，配合refreshKey
 4. **字段映射** - 后端font_size，前端fontSize，Schema需要alias
@@ -142,10 +142,3 @@ class AnnotationResponse(BaseModel):
   - POST: 创建标注
   - PUT: 更新标注
   - DELETE: 删除标注
-
-## 下一步可能的开发方向
-- [ ] 标注导出功能
-- [ ] 标注搜索功能
-- [ ] 更多标注工具（矩形、圆形、高亮等）
-- [ ] 标注分组和图层管理
-- [ ] 协作标注功能

@@ -19,45 +19,53 @@ DEFAULT_PARAMS = {
 }
 
 # Parameter adjustment rules for common requests
-ADJUSTMENT_RULES = {
-    # 字迹相关
-    "太淡": {"contrast": 0.2, "c": -2},
-    "太浅": {"contrast": 0.2, "c": -2},
-    "加深": {"contrast": 0.2, "c": -2},
-    "更深": {"contrast": 0.3, "c": -3},
-    "太深": {"contrast": -0.2, "c": 2},
-    "太黑": {"contrast": -0.2, "c": 2},
-    "变浅": {"contrast": -0.15, "c": 1},
+# 规则按优先级排序，更具体的规则放在前面
+ADJUSTMENT_RULES = [
+    # ===== 字迹深浅相关 =====
+    # 字迹太淡/浅，需要加深
+    (["字迹太淡", "字太淡", "太淡了", "太浅了", "字迹浅", "看不清字", "字不清楚"], {"contrast": 0.3, "c": -3}),
+    (["加深", "深一点", "更深", "颜色深"], {"contrast": 0.2, "c": -2}),
+    (["淡", "浅"], {"contrast": 0.15, "c": -2}),
     
-    # 字迹粗细
-    "太细": {"block_size": 2, "c": -1},
-    "加粗": {"block_size": 2, "c": -1},
-    "太粗": {"block_size": -2, "c": 1},
-    "变细": {"block_size": -2, "c": 1},
+    # 字迹太深/黑，需要变浅
+    (["太深", "太黑", "字太黑", "太重"], {"contrast": -0.2, "c": 3}),
+    (["变浅", "浅一点", "淡一点"], {"contrast": -0.15, "c": 2}),
     
-    # 亮度相关
-    "太亮": {"brightness": -15},
-    "太暗": {"brightness": 15},
-    "更亮": {"brightness": 10},
-    "更暗": {"brightness": -10},
+    # ===== 字迹粗细相关 =====
+    (["字太细", "太细了", "笔画细", "加粗", "粗一点"], {"block_size": 2, "c": -1}),
+    (["字太粗", "太粗了", "笔画粗", "变细", "细一点"], {"block_size": -2, "c": 1}),
     
-    # 清晰度
-    "模糊": {"sharpen": True, "denoise_strength": -3},
-    "不清晰": {"sharpen": True, "denoise_strength": -3},
-    "更清晰": {"sharpen": True, "denoise_strength": -2},
-    "锐化": {"sharpen": True},
+    # ===== 对比度相关 =====
+    (["对比度太低", "对比度低", "对比不够", "对比度不够", "增加对比", "对比度太弱", "对比弱"], {"contrast": 0.4}),
+    (["对比度太高", "对比度高", "对比太强", "降低对比", "对比度太强"], {"contrast": -0.3}),
+    (["提高对比", "加强对比", "对比度"], {"contrast": 0.3}),
     
-    # 噪点
-    "噪点": {"denoise_strength": 5},
-    "杂点": {"denoise_strength": 5},
-    "颗粒": {"denoise_strength": 5},
-    "去噪": {"denoise_strength": 5},
+    # ===== 亮度相关 =====
+    (["太亮", "太亮了", "亮度太高", "过曝", "曝光过度"], {"brightness": -20}),
+    (["太暗", "太暗了", "亮度太低", "欠曝", "曝光不足"], {"brightness": 20}),
+    (["更亮", "亮一点", "提高亮度", "增加亮度"], {"brightness": 15}),
+    (["更暗", "暗一点", "降低亮度", "减少亮度"], {"brightness": -15}),
     
-    # 背景
-    "背景脏": {"c": 2, "denoise_strength": 3},
-    "背景不白": {"c": 3, "brightness": 5},
-    "背景更白": {"c": 2, "brightness": 8},
-}
+    # ===== 清晰度/模糊相关 =====
+    (["太模糊", "很模糊", "模糊了", "不清晰", "不够清晰", "看不清"], {"sharpen": True, "denoise_strength": -5}),
+    (["模糊", "糊"], {"sharpen": True, "denoise_strength": -3}),
+    (["更清晰", "清晰一点", "锐化", "更锐利"], {"sharpen": True, "denoise_strength": -2}),
+    
+    # ===== 噪点相关 =====
+    (["噪点太多", "噪点多", "很多噪点", "杂点太多", "颗粒感太强"], {"denoise_strength": 8}),
+    (["噪点", "杂点", "颗粒", "去噪", "降噪", "有噪点"], {"denoise_strength": 5}),
+    (["太平滑", "过度降噪", "细节丢失"], {"denoise_strength": -5}),
+    
+    # ===== 背景相关 =====
+    (["背景不够白", "背景不白", "背景灰", "背景发灰", "背景太灰"], {"c": 4, "brightness": 10}),
+    (["背景脏", "背景有杂色", "背景不干净"], {"c": 3, "denoise_strength": 5}),
+    (["背景更白", "背景白一点", "纯白背景"], {"c": 5, "brightness": 15}),
+    (["背景太白", "背景过曝"], {"c": -2, "brightness": -10}),
+    
+    # ===== 整体效果 =====
+    (["效果不好", "处理效果差", "不满意"], {"contrast": 0.2, "c": -1, "sharpen": True}),
+    (["恢复", "还原", "重置"], {}),  # 空调整，会触发默认参数
+]
 
 
 class AIAgent:
@@ -104,21 +112,27 @@ class AIAgent:
     def _rule_based_adjust(self, instruction: str, current: dict) -> Optional[dict]:
         """
         Rule-based parameter adjustment for common requests
+        使用列表格式的规则，按优先级匹配
         """
         result = current.copy()
         matched = False
         
-        for keyword, adjustments in ADJUSTMENT_RULES.items():
-            if keyword in instruction:
-                matched = True
-                for param, delta in adjustments.items():
-                    if param == "sharpen":
-                        result[param] = delta
-                    elif param in result:
-                        if isinstance(result[param], bool):
+        # 遍历规则列表
+        for keywords, adjustments in ADJUSTMENT_RULES:
+            # 检查是否有任何关键词匹配
+            for keyword in keywords:
+                if keyword in instruction:
+                    matched = True
+                    # 应用调整
+                    for param, delta in adjustments.items():
+                        if param == "sharpen":
                             result[param] = delta
-                        else:
-                            result[param] = result[param] + delta
+                        elif param in result:
+                            if isinstance(result[param], bool):
+                                result[param] = delta
+                            else:
+                                result[param] = result[param] + delta
+                    break  # 每条规则只匹配一次
         
         if matched:
             # Clamp values to valid ranges

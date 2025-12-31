@@ -10,7 +10,7 @@ import {
 import { 
   ArrowLeftOutlined, DeleteOutlined, LeftOutlined, RightOutlined,
   FileImageOutlined, EyeOutlined, SettingOutlined, TagsOutlined,
-  FolderOutlined, ClockCircleOutlined, FileTextOutlined, HighlightOutlined, SaveOutlined, MenuFoldOutlined, MenuUnfoldOutlined
+  FolderOutlined, ClockCircleOutlined, FileTextOutlined, HighlightOutlined, SaveOutlined, MenuFoldOutlined, MenuUnfoldOutlined, FullscreenOutlined, FullscreenExitOutlined
 } from '@ant-design/icons'
 import { useNotesStore, useFoldersStore, useTagsStore } from '../../stores'
 import { useOutletContext } from 'react-router-dom'
@@ -32,6 +32,8 @@ export default function NoteDetail() {
   const [form] = Form.useForm()
   const { collapsed, setCollapsed } = useOutletContext()
   const imageRef = useRef(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [fullscreenIndex, setFullscreenIndex] = useState(0)
 
   const { currentNote, notes, loading, fetchNote, updateNote, deleteNote, clearCurrentNote } = useNotesStore()
   const { folders } = useFoldersStore()
@@ -60,6 +62,46 @@ export default function NoteDetail() {
       navigate(`/note/${notes[currentIndex + 1].id}`)
     }
   }
+
+  // Fullscreen handlers
+  const handleEnterFullscreen = () => {
+    setIsFullscreen(true)
+    setFullscreenIndex(currentIndex)
+  }
+
+  const handleExitFullscreen = () => {
+    setIsFullscreen(false)
+  }
+
+  const handleFullscreenPrev = () => {
+    if (fullscreenIndex > 0) {
+      setFullscreenIndex(fullscreenIndex - 1)
+    }
+  }
+
+  const handleFullscreenNext = () => {
+    if (fullscreenIndex < notes.length - 1) {
+      setFullscreenIndex(fullscreenIndex + 1)
+    }
+  }
+
+  // Keyboard navigation in fullscreen
+  useEffect(() => {
+    if (!isFullscreen) return
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleExitFullscreen()
+      } else if (e.key === 'ArrowLeft') {
+        handleFullscreenPrev()
+      } else if (e.key === 'ArrowRight') {
+        handleFullscreenNext()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isFullscreen, fullscreenIndex, notes.length])
 
   useEffect(() => {
     fetchNote(id)
@@ -157,6 +199,12 @@ export default function NoteDetail() {
         </Title>
 
         <Space>
+          <Button 
+            icon={<FullscreenOutlined />} 
+            onClick={handleEnterFullscreen}
+          >
+            全屏
+          </Button>
           <Segmented
             value={imageMode}
             onChange={setImageMode}
@@ -295,6 +343,52 @@ export default function NoteDetail() {
           />
         </div>
       </div>
+
+      {/* Fullscreen Modal */}
+      {isFullscreen && notes[fullscreenIndex] && (
+        <div className="fullscreen-viewer" onClick={handleExitFullscreen}>
+          <div className="fullscreen-content" onClick={(e) => e.stopPropagation()}>
+            <Button
+              className="fullscreen-close"
+              type="text"
+              icon={<FullscreenExitOutlined />}
+              onClick={handleExitFullscreen}
+              size="large"
+            />
+            
+            <Button
+              className="fullscreen-nav fullscreen-nav-prev"
+              icon={<LeftOutlined />}
+              onClick={handleFullscreenPrev}
+              disabled={fullscreenIndex === 0}
+              size="large"
+            />
+            
+            <img
+              src={notesAPI.getImageUrl(notes[fullscreenIndex].id, imageMode)}
+              alt={notes[fullscreenIndex].title}
+              className="fullscreen-image"
+            />
+            
+            <Button
+              className="fullscreen-nav fullscreen-nav-next"
+              icon={<RightOutlined />}
+              onClick={handleFullscreenNext}
+              disabled={fullscreenIndex === notes.length - 1}
+              size="large"
+            />
+            
+            <div className="fullscreen-info">
+              <Text strong style={{ color: '#fff', fontSize: '16px' }}>
+                {notes[fullscreenIndex].title}
+              </Text>
+              <Text style={{ color: '#fff', opacity: 0.8, marginLeft: '16px' }}>
+                {fullscreenIndex + 1} / {notes.length}
+              </Text>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

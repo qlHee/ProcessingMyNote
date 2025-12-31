@@ -194,11 +194,12 @@ export default function NoteAnnotator({
       await annotationsAPI.update(noteId, id, { 
         content: editContent,
         fontSize: annotation.fontSize,
+        color: annotation.color,
         x: annotation.x,
         y: annotation.y
       })
       setAnnotations(annotations.map(a => 
-        a.id === id ? { ...a, content: editContent, fontSize: annotation.fontSize } : a
+        a.id === id ? { ...a, content: editContent, fontSize: annotation.fontSize, color: annotation.color } : a
       ))
       setEditingId(null)
       setEditContent('')
@@ -221,6 +222,26 @@ export default function NoteAnnotator({
       onAnnotationChange?.()
     } catch (error) {
       message.error('删除失败')
+    }
+  }
+
+  // Clear all annotations
+  const handleClearAllAnnotations = async () => {
+    if (annotations.length === 0) {
+      message.info('暂无标注')
+      return
+    }
+    
+    try {
+      setLoading(true)
+      await Promise.all(annotations.map(a => annotationsAPI.delete(noteId, a.id)))
+      setAnnotations([])
+      message.success(`已清空 ${annotations.length} 个标注`)
+      onAnnotationChange?.()
+    } catch (error) {
+      message.error('清空失败')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -413,6 +434,27 @@ export default function NoteAnnotator({
             />
           ))}
         </div>
+
+        {/* Clear all button */}
+        {annotations.length > 0 && (
+          <Popconfirm
+            title={`确定清空所有 ${annotations.length} 个标注？`}
+            onConfirm={handleClearAllAnnotations}
+            okText="清空"
+            cancelText="取消"
+            okButtonProps={{ danger: true }}
+          >
+            <Button 
+              danger 
+              size="small" 
+              block
+              style={{ marginBottom: '12px' }}
+              loading={loading}
+            >
+              清空所有标注
+            </Button>
+          </Popconfirm>
+        )}
 
         {/* Annotations List */}
         <div className="annotation-list-section">

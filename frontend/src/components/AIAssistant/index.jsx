@@ -198,11 +198,20 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, initial
         message.success(res.data.message)
         // 更新本地参数状态
         if (res.data.new_params) {
-          setContrast(res.data.new_params.contrast || 1.0)
-          setBrightness(res.data.new_params.brightness || 0)
-          setC(res.data.new_params.c || 2)
-          setBlockSize(res.data.new_params.block_size || 11)
-          setDenoiseStrength(res.data.new_params.denoise_strength || 10)
+          const newParams = {
+            contrast: res.data.new_params.contrast || DEFAULT_PARAMS.contrast,
+            brightness: res.data.new_params.brightness || DEFAULT_PARAMS.brightness,
+            c: res.data.new_params.c || DEFAULT_PARAMS.c,
+            block_size: res.data.new_params.block_size || DEFAULT_PARAMS.block_size,
+            denoise_strength: res.data.new_params.denoise_strength || DEFAULT_PARAMS.denoise_strength,
+          }
+          setContrast(newParams.contrast)
+          setBrightness(newParams.brightness)
+          setC(newParams.c)
+          setBlockSize(newParams.block_size)
+          setDenoiseStrength(newParams.denoise_strength)
+          // 保存到历史记录
+          saveToHistory(newParams)
         }
         onAdjustSuccess?.()
       } else {

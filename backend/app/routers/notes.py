@@ -297,6 +297,93 @@ async def reprocess_note(
     return note
 
 
+@router.post("/{note_id}/rotate/", response_model=NoteResponse)
+async def rotate_note(
+    note_id: int,
+    angle: int = Form(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Rotate note image by specified angle (90, -90, 180)
+    """
+    result = await db.execute(
+        select(Note)
+        .where(Note.id == note_id, Note.user_id == current_user.id)
+        .options(selectinload(Note.tags))
+    )
+    note = result.scalar_one_or_none()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    original_path = settings.BASE_DIR / note.original_path
+    processed_path = settings.BASE_DIR / note.processed_path
+    
+    if not original_path.exists():
+        raise HTTPException(status_code=404, detail="Original image not found")
+    
+    # Rotate both original and processed images
+    from PIL import Image
+    
+    # Rotate original
+    with Image.open(original_path) as img:
+        rotated = img.rotate(-angle, expand=True)  # PIL rotates counter-clockwise, so negate
+        rotated.save(original_path)
+    
+    # Rotate processed if exists
+    if processed_path.exists():
+        with Image.open(processed_path) as img:
+            rotated = img.rotate(-angle, expand=True)
+            rotated.save(processed_path)
+    
+    await db.refresh(note)
+    return note
+
+
+@router.post("/{note_id}/crop/", response_model=NoteResponse)
+async def crop_note(
+    note_id: int,
+    x: int = Form(...),
+    y: int = Form(...),
+    width: int = Form(...),
+    height: int = Form(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Crop note image to specified region
+    """
+    result = await db.execute(
+        select(Note)
+        .where(Note.id == note_id, Note.user_id == current_user.id)
+        .options(selectinload(Note.tags))
+    )
+    note = result.scalar_one_or_none()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    original_path = settings.BASE_DIR / note.original_path
+    processed_path = settings.BASE_DIR / note.processed_path
+    
+    if not original_path.exists():
+        raise HTTPException(status_code=404, detail="Original image not found")
+    
+    from PIL import Image
+    
+    # Crop original
+    with Image.open(original_path) as img:
+        cropped = img.crop((x, y, x + width, y + height))
+        cropped.save(original_path)
+    
+    # Reprocess the cropped image
+    processor = ImageProcessor()
+    params = note.processing_params or {}
+    processor.process_with_params(str(original_path), str(processed_path), params)
+    
+    await db.refresh(note)
+    return note
+
+
 @router.delete("/{note_id}/")
 async def delete_note(
     note_id: int,

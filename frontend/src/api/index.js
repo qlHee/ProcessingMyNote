@@ -66,6 +66,19 @@ export const notesAPI = {
   update: (id, data) => api.put(`/notes/${id}/`, data),
   delete: (id) => api.delete(`/notes/${id}/`),
   reprocess: (id, params) => api.post(`/notes/${id}/reprocess/`, params),
+  rotate: (id, angle) => {
+    const formData = new FormData();
+    formData.append('angle', angle);
+    return api.post(`/notes/${id}/rotate/`, formData);
+  },
+  crop: (id, x, y, width, height) => {
+    const formData = new FormData();
+    formData.append('x', x);
+    formData.append('y', y);
+    formData.append('width', width);
+    formData.append('height', height);
+    return api.post(`/notes/${id}/crop/`, formData);
+  },
   getImageUrl: (id, type) => `/api/notes/${id}/image/${type}`,
 };
 

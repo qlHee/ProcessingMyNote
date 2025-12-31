@@ -148,6 +148,22 @@ export default function NoteDetail() {
     })
   }
 
+  // 旋转图片
+  const handleRotate = async (angle) => {
+    try {
+      await notesAPI.rotate(currentNote.id, angle)
+      message.success('旋转成功')
+      fetchNote(id)
+    } catch (error) {
+      message.error('旋转失败: ' + (error.response?.data?.detail || error.message))
+    }
+  }
+
+  // 裁剪图片（暂时显示提示，后续可以实现裁剪UI）
+  const handleCrop = () => {
+    message.info('裁剪功能开发中，敬请期待')
+  }
+
   if (loading || !currentNote) {
     return (
       <div className="note-detail-loading">
@@ -327,6 +343,8 @@ export default function NoteDetail() {
                   <AIAssistant 
                     noteId={currentNote.id} 
                     onAdjustSuccess={() => fetchNote(id)}
+                    onRotate={handleRotate}
+                    onCrop={handleCrop}
                   />
                 ),
               },

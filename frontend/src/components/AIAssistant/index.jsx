@@ -3,7 +3,7 @@
  */
 import { useState, useEffect } from 'react'
 import { Input, Button, Card, Typography, Space, Alert, Slider, Collapse, message } from 'antd'
-import { SendOutlined, RobotOutlined, SettingOutlined, RotateLeftOutlined, RotateRightOutlined } from '@ant-design/icons'
+import { SendOutlined, RobotOutlined, SettingOutlined, RotateLeftOutlined, RotateRightOutlined, UndoOutlined, RedoOutlined, ReloadOutlined } from '@ant-design/icons'
 import { aiAPI, notesAPI } from '../../api'
 import './index.css'
 
@@ -18,37 +18,112 @@ const exampleInstructions = [
   '对比度太低',
 ]
 
+// 默认参数值
+const DEFAULT_PARAMS = {
+  contrast: 1.0,
+  brightness: 0,
+  c: 2,
+  block_size: 11,
+  denoise_strength: 10,
+}
+
 export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, initialParams }) {
   const [instruction, setInstruction] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
-  const [contrast, setContrast] = useState(initialParams?.contrast ?? 1.0)
-  const [brightness, setBrightness] = useState(initialParams?.brightness ?? 0)
-  const [c, setC] = useState(initialParams?.c ?? 2)
-  const [blockSize, setBlockSize] = useState(initialParams?.block_size ?? 11)
-  const [denoiseStrength, setDenoiseStrength] = useState(initialParams?.denoise_strength ?? 10)
+  const [contrast, setContrast] = useState(initialParams?.contrast ?? DEFAULT_PARAMS.contrast)
+  const [brightness, setBrightness] = useState(initialParams?.brightness ?? DEFAULT_PARAMS.brightness)
+  const [c, setC] = useState(initialParams?.c ?? DEFAULT_PARAMS.c)
+  const [blockSize, setBlockSize] = useState(initialParams?.block_size ?? DEFAULT_PARAMS.block_size)
+  const [denoiseStrength, setDenoiseStrength] = useState(initialParams?.denoise_strength ?? DEFAULT_PARAMS.denoise_strength)
+  
+  // 撤销/重做历史记录
+  const [history, setHistory] = useState([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
   
   // 当initialParams变化时更新本地状态（但只在组件初始化时）
   const [initialized, setInitialized] = useState(false)
   useEffect(() => {
     if (initialParams && !initialized) {
-      setContrast(initialParams.contrast ?? 1.0)
-      setBrightness(initialParams.brightness ?? 0)
-      setC(initialParams.c ?? 2)
-      setBlockSize(initialParams.block_size ?? 11)
-      setDenoiseStrength(initialParams.denoise_strength ?? 10)
+      const params = {
+        contrast: initialParams.contrast ?? DEFAULT_PARAMS.contrast,
+        brightness: initialParams.brightness ?? DEFAULT_PARAMS.brightness,
+        c: initialParams.c ?? DEFAULT_PARAMS.c,
+        block_size: initialParams.block_size ?? DEFAULT_PARAMS.block_size,
+        denoise_strength: initialParams.denoise_strength ?? DEFAULT_PARAMS.denoise_strength,
+      }
+      setContrast(params.contrast)
+      setBrightness(params.brightness)
+      setC(params.c)
+      setBlockSize(params.block_size)
+      setDenoiseStrength(params.denoise_strength)
+      // 初始化历史记录
+      setHistory([params])
+      setHistoryIndex(0)
       setInitialized(true)
     }
   }, [initialParams, initialized])
+  
+  // 保存到历史记录
+  const saveToHistory = (params) => {
+    const newHistory = history.slice(0, historyIndex + 1)
+    newHistory.push(params)
+    setHistory(newHistory)
+    setHistoryIndex(newHistory.length - 1)
+  }
+  
+  // 撤销
+  const handleUndo = async () => {
+    if (historyIndex > 0) {
+      const prevIndex = historyIndex - 1
+      const prevParams = history[prevIndex]
+      setHistoryIndex(prevIndex)
+      setContrast(prevParams.contrast)
+      setBrightness(prevParams.brightness)
+      setC(prevParams.c)
+      setBlockSize(prevParams.block_size)
+      setDenoiseStrength(prevParams.denoise_strength)
+      await applyParams(prevParams, false) // 不保存到历史
+    }
+  }
+  
+  // 重做
+  const handleRedo = async () => {
+    if (historyIndex < history.length - 1) {
+      const nextIndex = historyIndex + 1
+      const nextParams = history[nextIndex]
+      setHistoryIndex(nextIndex)
+      setContrast(nextParams.contrast)
+      setBrightness(nextParams.brightness)
+      setC(nextParams.c)
+      setBlockSize(nextParams.block_size)
+      setDenoiseStrength(nextParams.denoise_strength)
+      await applyParams(nextParams, false) // 不保存到历史
+    }
+  }
+  
+  // 恢复默认值
+  const handleResetDefault = async () => {
+    setContrast(DEFAULT_PARAMS.contrast)
+    setBrightness(DEFAULT_PARAMS.brightness)
+    setC(DEFAULT_PARAMS.c)
+    setBlockSize(DEFAULT_PARAMS.block_size)
+    setDenoiseStrength(DEFAULT_PARAMS.denoise_strength)
+    await applyParams(DEFAULT_PARAMS, true)
+  }
 
   // 应用参数 - 直接调用API
-  const applyParams = async (params) => {
+  const applyParams = async (params, saveHistory = true) => {
     setLoading(true)
     try {
       console.log('Calling reprocess API with params:', params)
       const response = await notesAPI.reprocess(noteId, params)
       console.log('Reprocess API response:', response)
       message.success('参数应用成功')
+      // 保存到历史记录
+      if (saveHistory) {
+        saveToHistory(params)
+      }
       // 调用回调刷新图片
       onAdjustSuccess?.()
     } catch (error) {
@@ -77,7 +152,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, initial
     }
     
     console.log('Slider complete, applying params:', params)
-    applyParams(params)
+    applyParams(params, true)
   }
 
   const handleAIAdjust = async () => {
@@ -174,6 +249,26 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, initial
         )}
       </Card>
 
+      {/* 撤销/重做按钮 */}
+      <div className="undo-redo-bar">
+        <Button
+          icon={<UndoOutlined />}
+          size="small"
+          onClick={handleUndo}
+          disabled={historyIndex <= 0 || loading}
+        >
+          撤销
+        </Button>
+        <Button
+          icon={<RedoOutlined />}
+          size="small"
+          onClick={handleRedo}
+          disabled={historyIndex >= history.length - 1 || loading}
+        >
+          重做
+        </Button>
+      </div>
+
       {/* Manual Parameter Adjustment */}
       <Collapse
         ghost
@@ -184,7 +279,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, initial
             label: <><SettingOutlined /> 手动参数调整</>,
             children: (
               <div className="manual-params">
-                {/* 旋转按钮 */}
+                {/* 旋转和恢复默认值按钮 */}
                 <div className="transform-buttons">
                   <Button
                     icon={<RotateLeftOutlined />}
@@ -192,17 +287,21 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, initial
                     onClick={() => onRotate?.(-90)}
                     disabled={loading}
                     title="左旋转90°"
-                  >
-                    左旋转
-                  </Button>
+                  />
                   <Button
                     icon={<RotateRightOutlined />}
                     size="small"
                     onClick={() => onRotate?.(90)}
                     disabled={loading}
                     title="右旋转90°"
+                  />
+                  <Button
+                    icon={<ReloadOutlined />}
+                    size="small"
+                    onClick={handleResetDefault}
+                    disabled={loading}
                   >
-                    右旋转
+                    恢复默认
                   </Button>
                 </div>
 

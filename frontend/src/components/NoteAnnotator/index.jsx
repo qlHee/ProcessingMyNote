@@ -530,7 +530,10 @@ export default function NoteAnnotator({
                           <Select.Option value={3.0}>3.0</Select.Option>
                         </Select>
                         <Button size="small" onClick={() => setEditingId(null)}>取消</Button>
-                        <Button type="primary" size="small" loading={loading} onClick={() => handleUpdateAnnotation(annotation.id)}>保存</Button>
+                        <Button type="primary" size="small" loading={loading} onClick={() => {
+                          console.log('List edit save clicked, editContent:', editContent, 'annotation.id:', annotation.id)
+                          handleUpdateAnnotation(annotation.id)
+                        }}>保存</Button>
                       </div>
                     </div>
                   )

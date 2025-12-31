@@ -108,13 +108,16 @@ export default function NoteAnnotator({
     if (newAnnotation.type === 'draw' && newAnnotation.points && newAnnotation.points.length > 1) {
       // Save drawing
       try {
-        const res = await annotationsAPI.create(noteId, {
+        const createData = {
           x: newAnnotation.points[0].x,
           y: newAnnotation.points[0].y,
           content: JSON.stringify(newAnnotation.points),
           fontSize: fontSize,
           color: color,
-        })
+        }
+        console.log('Creating drawing with color:', createData)
+        const res = await annotationsAPI.create(noteId, createData)
+        console.log('Created drawing response:', res.data)
         setAnnotations(prev => [...prev, res.data])
         setNewAnnotation(null)
         setAnnotationMode(null)
@@ -129,13 +132,16 @@ export default function NoteAnnotator({
                (Math.abs(newAnnotation.x2 - newAnnotation.x) > 1 || Math.abs(newAnnotation.y2 - newAnnotation.y) > 1)) {
       // Save line/arrow/wave
       try {
-        const res = await annotationsAPI.create(noteId, {
+        const createData = {
           x: newAnnotation.x,
           y: newAnnotation.y,
           content: JSON.stringify({ x2: newAnnotation.x2, y2: newAnnotation.y2, type: newAnnotation.type }),
           fontSize: fontSize,
           color: color,
-        })
+        }
+        console.log('Creating line/arrow/wave with color:', createData)
+        const res = await annotationsAPI.create(noteId, createData)
+        console.log('Created line/arrow/wave response:', res.data)
         setAnnotations(prev => [...prev, res.data])
         setNewAnnotation(null)
         setAnnotationMode(null)
@@ -161,13 +167,16 @@ export default function NoteAnnotator({
 
     setLoading(true)
     try {
-      const res = await annotationsAPI.create(noteId, {
+      const createData = {
         x: newAnnotation.x,
         y: newAnnotation.y,
         content: content,
         fontSize: fontSize,
         color: color,
-      })
+      }
+      console.log('Creating annotation with color:', createData)
+      const res = await annotationsAPI.create(noteId, createData)
+      console.log('Created annotation response:', res.data)
       setAnnotations([...annotations, res.data])
       setNewAnnotation(null)
       setAnnotationMode(null)
@@ -191,20 +200,28 @@ export default function NoteAnnotator({
     setLoading(true)
     try {
       const annotation = annotations.find(a => a.id === id)
-      const currentFontSize = annotation.font_size || annotation.fontSize || fontSize
-      const currentColor = annotation.color || color
+      if (!annotation) {
+        message.error('标注不存在')
+        return
+      }
       
-      await annotationsAPI.update(noteId, id, { 
+      // 使用最新的本地状态值
+      const updateData = {
         content: editContent,
-        fontSize: currentFontSize,
-        color: currentColor,
+        fontSize: annotation.fontSize || annotation.font_size || fontSize,
+        color: annotation.color || color,
         x: annotation.x,
         y: annotation.y
-      })
+      }
+      
+      console.log('Updating annotation:', id, updateData)
+      await annotationsAPI.update(noteId, id, updateData)
+      
       setEditingId(null)
       setEditContent('')
       message.success('更新成功')
-      // Refresh to get latest data from server
+      
+      // 刷新数据
       await fetchAnnotations()
     } catch (error) {
       console.error('Update error:', error)
@@ -489,11 +506,14 @@ export default function NoteAnnotator({
                           size="small"
                           style={{ width: '70px' }}
                         >
-                          <Select.Option value={0.8}>0.8x</Select.Option>
-                          <Select.Option value={1.0}>1.0x</Select.Option>
-                          <Select.Option value={1.2}>1.2x</Select.Option>
-                          <Select.Option value={1.5}>1.5x</Select.Option>
-                          <Select.Option value={2.0}>2.0x</Select.Option>
+                          <Select.Option value={0.8}>0.8</Select.Option>
+                          <Select.Option value={1.0}>1.0</Select.Option>
+                          <Select.Option value={1.2}>1.2</Select.Option>
+                          <Select.Option value={1.5}>1.5</Select.Option>
+                          <Select.Option value={1.8}>1.8</Select.Option>
+                          <Select.Option value={2.0}>2.0</Select.Option>
+                          <Select.Option value={2.5}>2.5</Select.Option>
+                          <Select.Option value={3.0}>3.0</Select.Option>
                         </Select>
                         <Button size="small" onClick={() => setEditingId(null)}>取消</Button>
                         <Button type="primary" size="small" loading={loading} onClick={() => handleUpdateAnnotation(annotation.id)}>保存</Button>

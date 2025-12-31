@@ -13,23 +13,28 @@ Processing My Note 是一个面向大学生的智能笔记管理系统，支持�
 
 ## 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| Frontend | React + Vite + Ant Design |
-| Backend | Python FastAPI |
-| Database | SQLite |
-| Image Processing | OpenCV + NumPy |
-| AI | DeepSeek API |
+**后端**
+- FastAPI + SQLAlchemy (异步)
+- SQLite 数据库
+- OpenCV 图像处理
+- PaddleOCR 文字识别
+- DeepSeek API (AI 调整)
+
+**前端**
+- React + Vite
+- Ant Design UI 组件库
+- Zustand 状态管理
+- React Router 路由
+- Axios HTTP 客户端
 
 ## 快速开始
 
 ### 后端
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 ```
 
 ### 前端
@@ -38,6 +43,8 @@ cd frontend
 npm install
 npm run dev
 ```
+
+访问: http://localhost:5173
 
 ## 项目结构
 ```

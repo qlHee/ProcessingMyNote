@@ -137,16 +137,6 @@
   margin-top: 8px;
 }
 
-.ocr-text {
-  margin-top: 8px;
-  padding: 12px;
-  background: #fafafa;
-  border-radius: 6px;
-  font-size: 13px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
 /* Fullscreen Viewer */
 .fullscreen-viewer {
   position: fixed;

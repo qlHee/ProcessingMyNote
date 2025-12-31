@@ -1,6 +1,7 @@
 """
 Notes Router - Full CRUD for notes with image upload and processing
 """
+import re
 import uuid
 import shutil
 import asyncio
@@ -21,7 +22,6 @@ from app.models.folder import Folder
 from app.schemas.note import NoteCreate, NoteUpdate, NoteResponse, NoteListResponse, ProcessingParams
 from app.routers.auth import get_current_user
 from app.services.image_processor import ImageProcessor, process_note_image
-from app.services.ocr_service import generate_title_from_image, extract_text_from_image
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
 
@@ -47,7 +47,7 @@ async def get_notes(
     - folder_id: Filter by single folder
     - folder_ids: Filter by multiple folders (comma-separated IDs)
     - tag_ids: Filter by tags (comma-separated IDs)
-    - keyword: Search in title and OCR text
+    - keyword: Search in title
     """
     query = select(Note).where(Note.user_id == current_user.id).options(selectinload(Note.tags))
     
@@ -76,12 +76,7 @@ async def get_notes(
     # Search keyword
     if keyword:
         keyword_pattern = f"%{keyword}%"
-        query = query.where(
-            or_(
-                Note.title.ilike(keyword_pattern),
-                Note.ocr_text.ilike(keyword_pattern)
-            )
-        )
+        query = query.where(Note.title.ilike(keyword_pattern))
     
     query = query.order_by(Note.updated_at.desc())
     result = await db.execute(query)
@@ -118,7 +113,7 @@ async def upload_note(
     """
     Upload a new note image
     - Automatically processes image (white paper, black text effect)
-    - Runs OCR to extract text and generate title
+    - Auto-generates numbered title if not provided (笔记-1, 笔记-2, etc.)
     """
     # Validate file type
     if not file.filename or not validate_image(file.filename):
@@ -149,16 +144,39 @@ async def upload_note(
         processor = ImageProcessor()
         await asyncio.to_thread(processor.process, str(original_path), str(processed_path))
         
-        # Extract text and generate title in thread pool
-        ocr_text = await asyncio.to_thread(extract_text_from_image, str(processed_path))
-        auto_title = title or await asyncio.to_thread(generate_title_from_image, str(processed_path))
+        # Generate auto-numbered title if not provided
+        if not title:
+            # Find existing notes with pattern "笔记-N"
+            result = await db.execute(
+                select(Note.title).where(
+                    Note.user_id == current_user.id,
+                    Note.title.like('笔记-%')
+                )
+            )
+            existing_titles = [row[0] for row in result.fetchall()]
+            
+            # Extract numbers and find next available
+            existing_numbers = []
+            for t in existing_titles:
+                match = re.match(r'^笔记-(\d+)$', t)
+                if match:
+                    existing_numbers.append(int(match.group(1)))
+            
+            # Find next number
+            next_num = 1
+            while next_num in existing_numbers:
+                next_num += 1
+            
+            auto_title = f"笔记-{next_num}"
+        else:
+            auto_title = title
         
         # Create note record
         note = Note(
             title=auto_title,
             original_path=str(original_path.relative_to(settings.BASE_DIR)),
             processed_path=str(processed_path.relative_to(settings.BASE_DIR)),
-            ocr_text=ocr_text,
+            ocr_text=None,
             folder_id=folder_id,
             user_id=current_user.id,
             processing_params=processor.params.to_dict()

@@ -118,7 +118,7 @@ export default function UploadModal({ open, onClose }) {
         </Form.Item>
 
         <Form.Item name="title" label="标题（可选）">
-          <Input placeholder="留空将自动从 OCR 识别结果生成" />
+          <Input placeholder="留空将自动生成编号标题（笔记-1、笔记-2...）" />
         </Form.Item>
 
         <Form.Item name="folder_id" label="保存到文件夹" initialValue={0}>

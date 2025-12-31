@@ -60,10 +60,18 @@
 }
 
 .transform-buttons .ant-btn {
-  flex: 1;
   min-width: 0;
   padding: 0 8px;
   font-size: 12px;
+}
+
+.transform-buttons .ant-btn:nth-child(1),
+.transform-buttons .ant-btn:nth-child(2) {
+  flex: 0.5;
+}
+
+.transform-buttons .ant-btn:nth-child(3) {
+  flex: 2;
 }
 
 .manual-params {

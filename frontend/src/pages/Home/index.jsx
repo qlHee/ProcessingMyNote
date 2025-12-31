@@ -233,6 +233,20 @@ export default function Home() {
     })
   }
 
+  const handleBatchExport = async () => {
+    if (selectedNotes.length === 0) return
+    try {
+      let successCount = 0
+      for (const noteId of selectedNotes) {
+        await exportAPI.exportNote(noteId)
+        successCount++
+      }
+      message.success(`成功导出 ${successCount} 个笔记`)
+    } catch (error) {
+      message.error('批量导出失败')
+    }
+  }
+
   const getMenuItems = (note) => [
     {
       key: 'multiselect',
@@ -490,6 +504,13 @@ export default function Home() {
                 disabled={selectedNotes.length === 0}
               >
                 复制到
+              </Button>
+              <Button 
+                icon={<DownloadOutlined />}
+                onClick={handleBatchExport}
+                disabled={selectedNotes.length === 0}
+              >
+                导出
               </Button>
               <Button 
                 danger

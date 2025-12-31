@@ -4,6 +4,7 @@ Export Router - Export notes and folders
 import zipfile
 import shutil
 from pathlib import Path
+from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,7 +67,7 @@ async def export_note(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Export a single note (processed image only)"""
+    """Export a single note (annotated image if available, otherwise processed)"""
     result = await db.execute(
         select(Note).where(
             Note.id == note_id,
@@ -77,16 +78,25 @@ async def export_note(
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
     
-    # Check if processed image exists
+    # Try to get annotated image first, fall back to processed
     processed_path = settings.BASE_DIR / note.processed_path
-    if not processed_path.exists():
-        raise HTTPException(status_code=404, detail="Processed image not found")
+    processed_path_obj = Path(note.processed_path)
+    annotated_path = settings.BASE_DIR / processed_path_obj.parent / f"{processed_path_obj.stem}_annotated{processed_path_obj.suffix}"
     
-    # Return the processed image directly
+    export_path = annotated_path if annotated_path.exists() else processed_path
+    
+    if not export_path.exists():
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    # Use RFC 5987 encoding for filename to support UTF-8
+    encoded_filename = quote(f"{note.title}{export_path.suffix}")
+    
     return FileResponse(
-        processed_path,
+        export_path,
         media_type="application/octet-stream",
-        filename=f"{note.title}{processed_path.suffix}"
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+        }
     )
 
 
@@ -143,21 +153,27 @@ async def export_folder(
         if not notes:
             raise HTTPException(status_code=404, detail="No notes found in folder")
         
-        # Copy processed images
+        # Copy annotated images (or processed if annotated doesn't exist)
         for note in notes:
             processed_path = settings.BASE_DIR / note.processed_path
-            if processed_path.exists():
+            processed_path_obj = Path(note.processed_path)
+            annotated_path = settings.BASE_DIR / processed_path_obj.parent / f"{processed_path_obj.stem}_annotated{processed_path_obj.suffix}"
+            
+            # Use annotated image if available, otherwise use processed
+            export_path = annotated_path if annotated_path.exists() else processed_path
+            
+            if export_path.exists():
                 folder_path = folder_paths.get(note.folder_id, "")
                 dest_dir = export_dir / folder_path
-                dest_file = dest_dir / f"{note.title}{processed_path.suffix}"
+                dest_file = dest_dir / f"{note.title}{export_path.suffix}"
                 
                 # Handle duplicate filenames
                 counter = 1
                 while dest_file.exists():
-                    dest_file = dest_dir / f"{note.title}_{counter}{processed_path.suffix}"
+                    dest_file = dest_dir / f"{note.title}_{counter}{export_path.suffix}"
                     counter += 1
                 
-                shutil.copy2(processed_path, dest_file)
+                shutil.copy2(export_path, dest_file)
         
         # Create zip file
         zip_path = temp_dir / f"{folder.name}.zip"
@@ -170,11 +186,16 @@ async def export_folder(
         # Clean up export directory
         shutil.rmtree(export_dir)
         
+        # Use RFC 5987 encoding for filename to support UTF-8
+        encoded_filename = quote(f"{folder.name}.zip")
+        
         # Return zip file
         return FileResponse(
             zip_path,
             media_type="application/zip",
-            filename=f"{folder.name}.zip",
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+            },
             background=lambda: zip_path.unlink() if zip_path.exists() else None
         )
         

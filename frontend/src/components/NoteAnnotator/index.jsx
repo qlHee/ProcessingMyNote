@@ -529,10 +529,35 @@ export default function NoteAnnotator({
                           <Select.Option value={2.5}>2.5</Select.Option>
                           <Select.Option value={3.0}>3.0</Select.Option>
                         </Select>
-                        <Button size="small" onClick={() => setEditingId(null)}>取消</Button>
-                        <Button type="primary" size="small" loading={loading} onClick={() => {
-                          console.log('List edit save clicked, editContent:', editContent, 'annotation.id:', annotation.id)
-                          handleUpdateAnnotation(annotation.id)
+                        <Button size="small" onClick={() => {
+                          setEditingId(null)
+                          setEditContent('')
+                        }}>取消</Button>
+                        <Button type="primary" size="small" loading={loading} onClick={async () => {
+                          if (!editContent.trim()) {
+                            message.warning('请输入标注内容')
+                            return
+                          }
+                          setLoading(true)
+                          try {
+                            const ann = annotations.find(a => a.id === annotation.id)
+                            await annotationsAPI.update(noteId, annotation.id, {
+                              content: editContent,
+                              fontSize: ann?.fontSize || ann?.font_size || fontSize,
+                              color: ann?.color || color,
+                              x: ann?.x,
+                              y: ann?.y
+                            })
+                            setEditingId(null)
+                            setEditContent('')
+                            message.success('更新成功')
+                            await fetchAnnotations()
+                          } catch (error) {
+                            console.error('Update error:', error)
+                            message.error('更新失败')
+                          } finally {
+                            setLoading(false)
+                          }
                         }}>保存</Button>
                       </div>
                     </div>

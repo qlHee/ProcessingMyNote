@@ -196,6 +196,8 @@ export default function NoteAnnotator({
 
   // Update annotation
   const handleUpdateAnnotation = async (id) => {
+    console.log('handleUpdateAnnotation called with id:', id, 'editContent:', editContent)
+    
     if (!editContent.trim()) {
       message.warning('请输入标注内容')
       return
@@ -204,6 +206,8 @@ export default function NoteAnnotator({
     setLoading(true)
     try {
       const annotation = annotations.find(a => a.id === id)
+      console.log('Found annotation:', annotation)
+      
       if (!annotation) {
         message.error('标注不存在')
         setLoading(false)
@@ -219,7 +223,7 @@ export default function NoteAnnotator({
         y: annotation.y
       }
       
-      console.log('Updating annotation:', id, 'with data:', updateData)
+      console.log('Sending update request with data:', updateData)
       const response = await annotationsAPI.update(noteId, id, updateData)
       console.log('Update response:', response.data)
       
@@ -228,7 +232,9 @@ export default function NoteAnnotator({
       message.success('更新成功')
       
       // 刷新数据
+      console.log('Refreshing annotations...')
       await fetchAnnotations()
+      console.log('Annotations refreshed')
     } catch (error) {
       console.error('Update error:', error)
       message.error('更新失败: ' + (error.response?.data?.detail || error.message))

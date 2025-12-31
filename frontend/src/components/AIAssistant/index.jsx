@@ -111,6 +111,34 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, initial
     setDenoiseStrength(DEFAULT_PARAMS.denoise_strength)
     await applyParams(DEFAULT_PARAMS, true)
   }
+  
+  // 左旋转
+  const handleRotateLeft = async () => {
+    await onRotate?.(-90)
+    // 获取当前参数并保存到历史
+    const currentParams = {
+      contrast,
+      brightness,
+      c,
+      block_size: blockSize,
+      denoise_strength: denoiseStrength,
+    }
+    saveToHistory(currentParams)
+  }
+  
+  // 右旋转
+  const handleRotateRight = async () => {
+    await onRotate?.(90)
+    // 获取当前参数并保存到历史
+    const currentParams = {
+      contrast,
+      brightness,
+      c,
+      block_size: blockSize,
+      denoise_strength: denoiseStrength,
+    }
+    saveToHistory(currentParams)
+  }
 
   // 应用参数 - 直接调用API
   const applyParams = async (params, saveHistory = true) => {
@@ -284,14 +312,14 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, initial
                   <Button
                     icon={<RotateLeftOutlined />}
                     size="small"
-                    onClick={() => onRotate?.(-90)}
+                    onClick={handleRotateLeft}
                     disabled={loading}
                     title="左旋转90°"
                   />
                   <Button
                     icon={<RotateRightOutlined />}
                     size="small"
-                    onClick={() => onRotate?.(90)}
+                    onClick={handleRotateRight}
                     disabled={loading}
                     title="右旋转90°"
                   />
@@ -306,36 +334,13 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, initial
                 </div>
 
                 <div className="param-item">
-                  <Text>对比度: {contrast.toFixed(1)}</Text>
+                  <Text>降噪强度: {denoiseStrength}</Text>
                   <Slider
-                    min={0.5}
-                    max={2.0}
-                    step={0.1}
-                    value={contrast}
-                    onChange={setContrast}
-                    onChangeComplete={(v) => handleSliderComplete('contrast', v)}
-                    disabled={loading}
-                  />
-                </div>
-                <div className="param-item">
-                  <Text>亮度: {brightness}</Text>
-                  <Slider
-                    min={-50}
-                    max={50}
-                    value={brightness}
-                    onChange={setBrightness}
-                    onChangeComplete={(v) => handleSliderComplete('brightness', v)}
-                    disabled={loading}
-                  />
-                </div>
-                <div className="param-item">
-                  <Text>阈值偏移 (C): {c}</Text>
-                  <Slider
-                    min={-20}
+                    min={0}
                     max={20}
-                    value={c}
-                    onChange={setC}
-                    onChangeComplete={(v) => handleSliderComplete('c', v)}
+                    value={denoiseStrength}
+                    onChange={setDenoiseStrength}
+                    onChangeComplete={(v) => handleSliderComplete('denoise_strength', v)}
                     disabled={loading}
                   />
                 </div>
@@ -352,13 +357,36 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, initial
                   />
                 </div>
                 <div className="param-item">
-                  <Text>降噪强度: {denoiseStrength}</Text>
+                  <Text>阈值偏移 (C): {c}</Text>
                   <Slider
-                    min={0}
+                    min={-20}
                     max={20}
-                    value={denoiseStrength}
-                    onChange={setDenoiseStrength}
-                    onChangeComplete={(v) => handleSliderComplete('denoise_strength', v)}
+                    value={c}
+                    onChange={setC}
+                    onChangeComplete={(v) => handleSliderComplete('c', v)}
+                    disabled={loading}
+                  />
+                </div>
+                <div className="param-item">
+                  <Text>亮度: {brightness}</Text>
+                  <Slider
+                    min={-50}
+                    max={50}
+                    value={brightness}
+                    onChange={setBrightness}
+                    onChangeComplete={(v) => handleSliderComplete('brightness', v)}
+                    disabled={loading}
+                  />
+                </div>
+                <div className="param-item">
+                  <Text>对比度: {contrast.toFixed(1)}</Text>
+                  <Slider
+                    min={0.5}
+                    max={2.0}
+                    step={0.1}
+                    value={contrast}
+                    onChange={setContrast}
+                    onChangeComplete={(v) => handleSliderComplete('contrast', v)}
                     disabled={loading}
                   />
                 </div>

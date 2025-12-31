@@ -7,13 +7,6 @@ import httpx
 from typing import Optional
 from app.config import settings
 
-# 从 api_keys.py 导入 DeepSeek API Key
-try:
-    from app.config.api_keys import DEEPSEEK_API_KEY
-except ImportError:
-    DEEPSEEK_API_KEY = None
-    print("Warning: api_keys.py not found, DeepSeek API will not be available")
-
 
 # Default processing parameters
 DEFAULT_PARAMS = {
@@ -81,11 +74,8 @@ class AIAgent:
     """
     
     def __init__(self):
-        # 优先使用从 api_keys.py 导入的 API Key
-        self.api_key = DEEPSEEK_API_KEY or settings.DEEPSEEK_API_KEY
+        self.api_key = settings.DEEPSEEK_API_KEY
         self.api_url = settings.DEEPSEEK_API_URL
-        if self.api_key:
-            print(f"DeepSeek API Key loaded (length: {len(self.api_key)})")
     
     async def interpret_instruction(
         self, 
@@ -104,22 +94,24 @@ class AIAgent:
         """
         current = current_params or DEFAULT_PARAMS.copy()
         
-        # 优先使用 DeepSeek API 进行智能调整
+        # 优先使用 DeepSeek API（如果配置了API密钥）
         if self.api_key:
             try:
-                print(f"Using DeepSeek API for instruction: {instruction}")
-                result = await self._ai_adjust(instruction, current)
-                print(f"DeepSeek API result: {result}")
-                return result
+                ai_result = await self._ai_adjust(instruction, current)
+                # 如果AI返回了有效的调整，使用AI结果
+                if ai_result != current:
+                    print(f"Using DeepSeek AI adjustment")
+                    return ai_result
             except Exception as e:
-                print(f"DeepSeek API error: {e}, falling back to rule-based")
+                print(f"AI API error: {e}, falling back to rule-based")
         
-        # API不可用时，回退到规则匹配
+        # 回退到规则匹配
         rule_result = self._rule_based_adjust(instruction, current)
         if rule_result:
+            print(f"Using rule-based adjustment")
             return rule_result
         
-        # 都失败时返回当前参数不变
+        # 如果规则也没匹配，返回当前参数（不做修改）
         return current
     
     def _rule_based_adjust(self, instruction: str, current: dict) -> Optional[dict]:
@@ -186,67 +178,58 @@ class AIAgent:
         """
         Use DeepSeek API to interpret complex instructions
         """
-        system_prompt = """你是一个专业的笔记图片处理参数调整助手。这是一个将手写笔记照片处理成扫描件效果的应用。
+        system_prompt = """你是一个专业的图像处理参数调整助手。用户正在处理手写笔记的扫描图片，他们会用自然语言描述对图片处理效果的要求。
 
-用户会用自然语言描述他们对图片处理效果的不满意之处，你需要理解用户的意图并返回调整后的参数。
+你的任务是根据用户的描述，调整以下图像处理参数：
 
-## 可调整的参数及其作用：
+**参数详细说明：**
+1. **contrast** (0.1-3.0，默认1.0): 对比度
+   - 增加对比度：让黑白更分明，字迹更清晰
+   - 减少对比度：让图片更柔和
+   - 用户说"对比度太低"、"对比不够"时应增加（建议+0.3到+0.5）
+   - 用户说"对比度太高"时应减少（建议-0.2到-0.3）
 
-1. **contrast** (对比度, 范围: 0.5-2.0, 默认: 1.0)
-   - 控制图像整体对比度
-   - 值越大，黑白对比越明显，字迹越清晰
-   - 用户说"字迹太淡"、"看不清"时，增加此值 (如 1.3-1.5)
-   - 用户说"太黑"、"太深"时，降低此值 (如 0.7-0.9)
+2. **c** (-50 to 50，默认2): 阈值偏移
+   - 负值：字迹变深/变黑，背景变白
+   - 正值：字迹变浅，背景变灰
+   - 用户说"字迹太淡"、"看不清字"时应减少（建议-2到-5）
+   - 用户说"背景不够白"、"背景灰"时应增加（建议+3到+5）
 
-2. **brightness** (亮度, 范围: -50 到 50, 默认: 0)
-   - 控制整体亮度
-   - 正值使图像更亮，负值使图像更暗
-   - 用户说"太暗"时，增加此值 (如 10-20)
-   - 用户说"太亮"、"背景不够白"时，可能需要调整
+3. **brightness** (-100 to 100，默认0): 亮度
+   - 正值：整体变亮
+   - 负值：整体变暗
+   - 用户说"太暗"时应增加（建议+15到+20）
+   - 用户说"太亮"、"过曝"时应减少（建议-15到-20）
 
-3. **c** (阈值偏移, 范围: -20 到 20, 默认: 2)
-   - 控制二值化阈值，影响字迹深浅和背景白度
-   - 值越小(负值)，字迹越深/黑，背景可能变灰
-   - 值越大(正值)，背景越白，但字迹可能变淡
-   - 用户说"背景不够白"、"背景灰"时，增加此值 (如 5-10)
-   - 用户说"字迹太淡"时，降低此值 (如 -2 到 -5)
+4. **block_size** (3-99奇数，默认11): 自适应阈值邻域大小
+   - 增加：字迹变粗
+   - 减少：字迹变细
+   - 用户说"字太细"、"加粗"时应增加（建议+2到+4）
+   - 用户说"字太粗"时应减少（建议-2到-4）
 
-4. **block_size** (块大小, 范围: 3-31, 必须是奇数, 默认: 11)
-   - 自适应阈值的邻域大小
-   - 值越大，字迹越粗
-   - 用户说"字太细"时，增加此值 (如 13-15)
-   - 用户说"字太粗"时，降低此值 (如 7-9)
+5. **denoise_strength** (0-30，默认10): 降噪强度
+   - 增加：减少噪点，但可能丢失细节
+   - 减少：保留更多细节，但噪点可能增多
+   - 用户说"噪点太多"、"杂点多"时应增加（建议+5到+8）
+   - 用户说"太模糊"、"不清晰"时应减少（建议-3到-5）
 
-5. **denoise_strength** (降噪强度, 范围: 0-20, 默认: 10)
-   - 控制降噪程度
-   - 值越大，图像越平滑，噪点越少，但可能丢失细节
-   - 用户说"噪点多"、"杂点多"时，增加此值 (如 15-18)
-   - 用户说"模糊"、"不清晰"时，降低此值 (如 5-8)
+**重要规则：**
+- 只返回需要调整的参数，不要返回所有参数
+- 返回纯JSON格式，不要有任何其他文字
+- 参数值必须在有效范围内
+- block_size必须是奇数
+- 根据用户描述的严重程度调整参数变化幅度
 
-## 常见用户需求的参数调整建议：
+**示例：**
+用户说"背景不够白" → {"c": 4, "brightness": 10}
+用户说"字迹太淡了" → {"contrast": 0.3, "c": -3}
+用户说"对比度太低" → {"contrast": 0.4}"""
 
-- "字迹太淡/加深": contrast +0.2~0.4, c -2~-5
-- "背景不够白/背景灰": c +3~+8, brightness +5~+15
-- "对比度太低": contrast +0.3~0.5
-- "太模糊/不清晰": denoise_strength -3~-5
-- "噪点太多": denoise_strength +5~+8
-- "字太细": block_size +2~+4
-- "字太粗": block_size -2~-4
+        user_prompt = f"""当前参数：{json.dumps(current, ensure_ascii=False)}
 
-## 输出格式要求：
+用户反馈：{instruction}
 
-只返回一个纯JSON对象，包含需要调整的参数的**最终值**（不是增量）。
-例如，如果当前contrast是1.0，用户要加深，你应该返回：
-{"contrast": 1.3, "c": -2}
-
-不要返回任何解释文字，只返回JSON。"""
-
-        user_prompt = f"""当前图片处理参数：
-{json.dumps(current, indent=2)}
-
-用户的调整要求："{instruction}"
-
-请根据用户要求，返回调整后的参数（JSON格式，只包含需要修改的参数的最终值）："""
+请分析用户需求，返回需要调整的参数（纯JSON格式，不要有其他文字）："""
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -261,49 +244,29 @@ class AIAgent:
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
                     ],
-                    "temperature": 0.3,
-                    "max_tokens": 200,
+                    "temperature": 0.1,  # 降低温度以获得更稳定的输出
+                    "max_tokens": 300,
                 },
                 timeout=30.0,
             )
             
             if response.status_code != 200:
-                error_text = response.text
-                print(f"DeepSeek API error response: {error_text}")
-                raise Exception(f"API error: {response.status_code} - {error_text}")
+                raise Exception(f"API error: {response.status_code}")
             
             result = response.json()
             content = result["choices"][0]["message"]["content"]
-            print(f"DeepSeek API raw response: {content}")
             
             # Parse JSON from response
             try:
                 # Try to extract JSON from the response
-                json_match = content.strip()
-                
-                # 处理可能的代码块格式
-                if "```" in json_match:
+                json_match = content
+                if "```" in content:
                     # Extract from code block
-                    parts = json_match.split("```")
-                    for part in parts:
-                        part = part.strip()
-                        if part.startswith("json"):
-                            part = part[4:].strip()
-                        if part.startswith("{"):
-                            json_match = part
-                            break
+                    json_match = content.split("```")[1]
+                    if json_match.startswith("json"):
+                        json_match = json_match[4:]
                 
-                # 尝试找到JSON对象
-                if not json_match.startswith("{"):
-                    # 尝试从文本中提取JSON
-                    start = json_match.find("{")
-                    end = json_match.rfind("}") + 1
-                    if start != -1 and end > start:
-                        json_match = json_match[start:end]
-                
-                print(f"Extracted JSON: {json_match}")
-                adjustments = json.loads(json_match)
-                print(f"Parsed adjustments: {adjustments}")
+                adjustments = json.loads(json_match.strip())
                 
                 # Apply adjustments to current params
                 result_params = current.copy()
@@ -311,12 +274,9 @@ class AIAgent:
                     if key in result_params:
                         result_params[key] = value
                 
-                final_params = self._clamp_params(result_params)
-                print(f"Final params after clamp: {final_params}")
-                return final_params
-            except json.JSONDecodeError as e:
-                print(f"JSON decode error: {e}, content was: {content}")
-                raise Exception(f"Failed to parse AI response: {e}")
+                return self._clamp_params(result_params)
+            except json.JSONDecodeError:
+                return current
 
 
 # Singleton instance

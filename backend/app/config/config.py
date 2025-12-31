@@ -4,12 +4,6 @@ Application Configuration
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
-# 尝试导入API密钥配置
-try:
-    from app.config.api_keys import DEEPSEEK_API_KEY as _DEEPSEEK_API_KEY
-except ImportError:
-    _DEEPSEEK_API_KEY = ""
-
 
 class Settings(BaseSettings):
     # App
@@ -37,8 +31,8 @@ class Settings(BaseSettings):
     DEFAULT_BRIGHTNESS: int = 0
     DEFAULT_DENOISE_STRENGTH: int = 10
     
-    # DeepSeek API
-    DEEPSEEK_API_KEY: str = _DEEPSEEK_API_KEY
+    # DeepSeek API (预留)
+    DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_API_URL: str = "https://api.deepseek.com/v1/chat/completions"
     
     class Config:

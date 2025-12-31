@@ -3,10 +3,13 @@ Annotations Router - CRUD for note annotations
 """
 import cv2
 import numpy as np
+import json
+import math
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from PIL import Image, ImageDraw, ImageFont
 
 from app.database import get_db
 from app.config import settings
@@ -17,6 +20,25 @@ from app.schemas.annotation import AnnotationCreate, AnnotationUpdate, Annotatio
 from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/notes/{note_id}/annotations", tags=["Annotations"])
+
+
+def hex_to_rgb(hex_color: str) -> tuple:
+    """Convert hex color to RGB tuple"""
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
+
+def parse_annotation_content(content: str):
+    """Parse annotation content to determine type"""
+    try:
+        parsed = json.loads(content)
+        if isinstance(parsed, list):
+            return {'type': 'draw', 'data': parsed}
+        elif 'x2' in parsed and 'y2' in parsed:
+            return {'type': parsed.get('type', 'line'), 'data': parsed}
+    except (json.JSONDecodeError, TypeError):
+        return {'type': 'text', 'data': content}
+    return {'type': 'text', 'data': content}
 
 
 def render_annotations_to_image(note: Note, annotations: list) -> str:
@@ -34,74 +56,178 @@ def render_annotations_to_image(note: Note, annotations: list) -> str:
     # 生成带标记的图片路径
     annotated_path = processed_path.parent / f"{processed_path.stem}_annotated{processed_path.suffix}"
     
-    # 读取处理后的图片
-    img = cv2.imread(str(processed_path))
-    if img is None:
-        return None
-    
     # 如果没有标记，删除旧的annotated图片（如果存在）
     if not annotations:
         if annotated_path.exists():
             annotated_path.unlink()
         return None
     
-    height, width = img.shape[:2]
+    # 使用PIL读取图片以支持中文文字
+    img = Image.open(str(processed_path)).convert('RGBA')
+    width, height = img.size
     
-    # 设置字体
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = max(0.8, min(width, height) / 800)
-    thickness = max(2, int(font_scale * 2))
+    # 创建一个透明的overlay用于绘制标注
+    overlay = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
     
-    for i, annotation in enumerate(annotations):
-        # 计算标记位置（百分比转像素）
+    # 尝试加载中文字体
+    try:
+        # macOS 系统字体
+        font_paths = [
+            '/System/Library/Fonts/PingFang.ttc',
+            '/System/Library/Fonts/STHeiti Light.ttc',
+            '/System/Library/Fonts/Hiragino Sans GB.ttc',
+            '/Library/Fonts/Arial Unicode.ttf',
+        ]
+        base_font = None
+        for font_path in font_paths:
+            if Path(font_path).exists():
+                base_font = font_path
+                break
+    except:
+        base_font = None
+    
+    for annotation in annotations:
+        parsed = parse_annotation_content(annotation.content)
+        ann_type = parsed['type']
+        ann_data = parsed['data']
+        
+        # 获取标注颜色
+        color_hex = annotation.color or '#1890ff'
+        color_rgb = hex_to_rgb(color_hex)
+        
+        # 获取字体大小/线条粗细
+        font_size = annotation.font_size or 1.0
+        stroke_width = max(2, int(font_size * 0.15 * min(width, height) / 100 * 5))
+        
+        # 计算位置（百分比转像素）
         x = int(annotation.x * width / 100)
         y = int(annotation.y * height / 100)
         
-        # 绘制标记圆点（红色填充，白色边框）
-        radius = int(20 * font_scale)
-        cv2.circle(img, (x, y), radius, (0, 0, 255), -1)
-        cv2.circle(img, (x, y), radius, (255, 255, 255), 3)
-        
-        # 绘制序号（白色）
-        number = str(i + 1)
-        text_size = cv2.getTextSize(number, font, font_scale * 0.7, thickness)[0]
-        text_x = x - text_size[0] // 2
-        text_y = y + text_size[1] // 2
-        cv2.putText(img, number, (text_x, text_y), font, font_scale * 0.7, (255, 255, 255), thickness)
-        
-        # 绘制标注内容（在标记点右侧）
-        content = annotation.content
-        if len(content) > 25:
-            content = content[:22] + "..."
-        
-        # 背景框位置
-        text_size = cv2.getTextSize(content, font, font_scale * 0.5, thickness)[0]
-        box_x = x + int(30 * font_scale)
-        box_y = y - text_size[1] // 2 - 8
-        
-        # 确保不超出图片边界
-        if box_x + text_size[0] + 10 > width:
-            box_x = x - text_size[0] - int(40 * font_scale)
-        if box_y < 5:
-            box_y = 5
-        if box_y + text_size[1] + 15 > height:
-            box_y = height - text_size[1] - 15
-        
-        # 绘制背景框（白色填充，红色边框）
-        cv2.rectangle(img, 
-                     (box_x - 8, box_y - 8), 
-                     (box_x + text_size[0] + 8, box_y + text_size[1] + 12), 
-                     (255, 255, 255), -1)
-        cv2.rectangle(img, 
-                     (box_x - 8, box_y - 8), 
-                     (box_x + text_size[0] + 8, box_y + text_size[1] + 12), 
-                     (0, 0, 255), 3)
-        
-        # 绘制文字（黑色）
-        cv2.putText(img, content, (box_x, box_y + text_size[1]), font, font_scale * 0.5, (0, 0, 0), thickness)
+        if ann_type == 'text':
+            # 文字标注 - 绘制标记点和文字
+            marker_radius = max(8, int(min(width, height) / 80))
+            
+            # 绘制标记点（带颜色的圆点）
+            draw.ellipse(
+                [x - marker_radius, y - marker_radius, x + marker_radius, y + marker_radius],
+                fill=color_rgb + (255,),
+                outline=(255, 255, 255, 255),
+                width=2
+            )
+            
+            # 绘制文字
+            text_content = str(ann_data)
+            text_font_size = max(12, int(font_size * min(width, height) / 60))
+            
+            try:
+                if base_font:
+                    font = ImageFont.truetype(base_font, text_font_size)
+                else:
+                    font = ImageFont.load_default()
+            except:
+                font = ImageFont.load_default()
+            
+            # 计算文字位置（在标记点右侧）
+            text_x = x + marker_radius + 8
+            text_y = y - text_font_size // 2
+            
+            # 获取文字边界框
+            bbox = draw.textbbox((text_x, text_y), text_content, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            
+            # 确保不超出图片边界
+            if text_x + text_width + 10 > width:
+                text_x = x - marker_radius - text_width - 8
+            if text_y < 5:
+                text_y = 5
+            if text_y + text_height > height - 5:
+                text_y = height - text_height - 5
+            
+            # 绘制文字背景
+            padding = 4
+            draw.rectangle(
+                [text_x - padding, text_y - padding, text_x + text_width + padding, text_y + text_height + padding],
+                fill=(255, 255, 255, 230),
+                outline=color_rgb + (255,),
+                width=2
+            )
+            
+            # 绘制文字
+            draw.text((text_x, text_y), text_content, fill=(0, 0, 0, 255), font=font)
+            
+        elif ann_type == 'line':
+            # 直线
+            x2 = int(ann_data['x2'] * width / 100)
+            y2 = int(ann_data['y2'] * height / 100)
+            draw.line([(x, y), (x2, y2)], fill=color_rgb + (255,), width=stroke_width)
+            
+        elif ann_type == 'arrow':
+            # 箭头
+            x2 = int(ann_data['x2'] * width / 100)
+            y2 = int(ann_data['y2'] * height / 100)
+            
+            # 绘制线条
+            draw.line([(x, y), (x2, y2)], fill=color_rgb + (255,), width=stroke_width)
+            
+            # 绘制箭头头部
+            angle = math.atan2(y2 - y, x2 - x)
+            arrow_size = stroke_width * 4
+            
+            # 箭头的两个点
+            arrow_angle = math.pi / 6  # 30度
+            p1_x = x2 - arrow_size * math.cos(angle - arrow_angle)
+            p1_y = y2 - arrow_size * math.sin(angle - arrow_angle)
+            p2_x = x2 - arrow_size * math.cos(angle + arrow_angle)
+            p2_y = y2 - arrow_size * math.sin(angle + arrow_angle)
+            
+            draw.polygon([(x2, y2), (p1_x, p1_y), (p2_x, p2_y)], fill=color_rgb + (255,))
+            
+        elif ann_type == 'wave':
+            # 波浪线
+            x2 = int(ann_data['x2'] * width / 100)
+            y2 = int(ann_data['y2'] * height / 100)
+            
+            dx = x2 - x
+            dy = y2 - y
+            length = math.sqrt(dx * dx + dy * dy)
+            wave_count = max(3, int(length / 20))
+            amplitude = stroke_width * 3
+            
+            # 生成波浪线的点
+            points = []
+            for i in range(wave_count * 10 + 1):
+                t = i / (wave_count * 10)
+                px = x + dx * t
+                py = y + dy * t
+                
+                # 添加正弦波动
+                wave_offset = amplitude * math.sin(t * wave_count * 2 * math.pi)
+                # 垂直于线条方向的偏移
+                perp_x = -dy / length if length > 0 else 0
+                perp_y = dx / length if length > 0 else 0
+                
+                px += perp_x * wave_offset
+                py += perp_y * wave_offset
+                points.append((px, py))
+            
+            if len(points) >= 2:
+                draw.line(points, fill=color_rgb + (255,), width=stroke_width)
+            
+        elif ann_type == 'draw':
+            # 自由绘制
+            if isinstance(ann_data, list) and len(ann_data) >= 2:
+                points = [(int(p['x'] * width / 100), int(p['y'] * height / 100)) for p in ann_data]
+                draw.line(points, fill=color_rgb + (255,), width=max(1, stroke_width // 2))
     
-    # 保存带标记的图片
-    cv2.imwrite(str(annotated_path), img)
+    # 合并overlay到原图
+    img = Image.alpha_composite(img, overlay)
+    
+    # 转换为RGB并保存
+    img_rgb = img.convert('RGB')
+    img_rgb.save(str(annotated_path), quality=95)
+    
     return str(annotated_path.relative_to(settings.BASE_DIR))
 
 

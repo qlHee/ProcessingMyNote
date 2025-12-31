@@ -140,16 +140,7 @@ def render_annotations_to_image(note: Note, annotations: list) -> str:
             if text_y + text_height > height - 5:
                 text_y = height - text_height - 5
             
-            # 绘制文字背景（半透明白色）
-            padding = 4
-            draw.rectangle(
-                [text_x - padding, text_y - padding, text_x + text_width + padding, text_y + text_height + padding],
-                fill=(255, 255, 255, 220),
-                outline=color_rgb + (255,),
-                width=2
-            )
-            
-            # 绘制文字（使用标注颜色）
+            # 直接绘制文字（使用标注颜色，不绘制背景框）
             draw.text((text_x, text_y), text_content, fill=color_rgb + (255,), font=font)
             
         elif ann_type == 'line':

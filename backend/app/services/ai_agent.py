@@ -115,17 +115,16 @@ class AIAgent:
     def _rule_based_adjust(self, instruction: str, current: dict) -> Optional[dict]:
         """
         Rule-based parameter adjustment for common requests
-        使用列表格式的规则，按优先级匹配
+        使用列表格式的规则，只匹配第一个（最具体的）规则
         """
         result = current.copy()
-        matched = False
         
-        # 遍历规则列表
+        # 遍历规则列表，只匹配第一个规则（规则按优先级排序）
         for keywords, adjustments in ADJUSTMENT_RULES:
             # 检查是否有任何关键词匹配
             for keyword in keywords:
                 if keyword in instruction:
-                    matched = True
+                    print(f"Rule matched: '{keyword}' -> {adjustments}")
                     # 应用调整
                     for param, delta in adjustments.items():
                         if param == "sharpen":
@@ -135,12 +134,11 @@ class AIAgent:
                                 result[param] = delta
                             else:
                                 result[param] = result[param] + delta
-                    break  # 每条规则只匹配一次
-        
-        if matched:
-            # Clamp values to valid ranges
-            result = self._clamp_params(result)
-            return result
+                    
+                    # 只匹配一个规则后立即返回，避免累加
+                    result = self._clamp_params(result)
+                    print(f"Rule-based result: {result}")
+                    return result
         
         return None
     

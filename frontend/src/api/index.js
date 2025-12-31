@@ -85,6 +85,35 @@ export const aiAPI = {
     api.post('/ai/adjust/', { note_id: noteId, instruction }),
 };
 
+// Helper function to parse filename from Content-Disposition header
+const parseFilename = (contentDisposition, defaultName) => {
+  if (!contentDisposition) return defaultName;
+  
+  // Try to match filename*=UTF-8''encoded_filename (RFC 5987)
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\s]+)/i);
+  if (utf8Match && utf8Match[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1]);
+    } catch (e) {
+      // Fall through to other methods
+    }
+  }
+  
+  // Try to match filename="quoted_filename"
+  const quotedMatch = contentDisposition.match(/filename="([^"]+)"/);
+  if (quotedMatch && quotedMatch[1]) {
+    return quotedMatch[1];
+  }
+  
+  // Try to match filename=unquoted_filename
+  const unquotedMatch = contentDisposition.match(/filename=([^;\s]+)/);
+  if (unquotedMatch && unquotedMatch[1]) {
+    return unquotedMatch[1];
+  }
+  
+  return defaultName;
+};
+
 // Export API
 export const exportAPI = {
   exportNote: async (noteId) => {
@@ -102,13 +131,7 @@ export const exportAPI = {
     
     const blob = await response.blob();
     const contentDisposition = response.headers.get('content-disposition');
-    let filename = 'note.jpg';
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-      if (filenameMatch && filenameMatch[1]) {
-        filename = filenameMatch[1].replace(/['"]/g, '');
-      }
-    }
+    const filename = parseFilename(contentDisposition, 'note.jpg');
     
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -134,13 +157,7 @@ export const exportAPI = {
     
     const blob = await response.blob();
     const contentDisposition = response.headers.get('content-disposition');
-    let filename = 'folder.zip';
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-      if (filenameMatch && filenameMatch[1]) {
-        filename = filenameMatch[1].replace(/['"]/g, '');
-      }
-    }
+    const filename = parseFilename(contentDisposition, 'folder.zip');
     
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');

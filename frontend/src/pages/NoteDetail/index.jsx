@@ -345,9 +345,9 @@ export default function NoteDetail() {
                 children: (
                   <AIAssistant 
                     noteId={currentNote.id} 
+                    initialParams={currentNote.processing_params}
                     onAdjustSuccess={() => {
                       setImageRefreshKey(k => k + 1)
-                      fetchNote(id)
                     }}
                     onRotate={handleRotate}
                   />

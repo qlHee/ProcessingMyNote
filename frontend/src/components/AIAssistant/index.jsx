@@ -1,11 +1,10 @@
 /**
  * AIAssistant - Natural language image adjustment
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Input, Button, Card, Typography, Space, Alert, Slider, Collapse, message } from 'antd'
 import { SendOutlined, RobotOutlined, SettingOutlined, RotateLeftOutlined, RotateRightOutlined } from '@ant-design/icons'
-import { aiAPI } from '../../api'
-import { useNotesStore } from '../../stores'
+import { aiAPI, notesAPI } from '../../api'
 import './index.css'
 
 const { Text, Paragraph } = Typography
@@ -19,31 +18,42 @@ const exampleInstructions = [
   '对比度太低',
 ]
 
-export default function AIAssistant({ noteId, onAdjustSuccess, onRotate }) {
+export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, initialParams }) {
   const [instruction, setInstruction] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
-  const [contrast, setContrast] = useState(1.0)
-  const [brightness, setBrightness] = useState(0)
-  const [c, setC] = useState(2)
-  const [blockSize, setBlockSize] = useState(11)
-  const [denoiseStrength, setDenoiseStrength] = useState(10)
+  const [contrast, setContrast] = useState(initialParams?.contrast ?? 1.0)
+  const [brightness, setBrightness] = useState(initialParams?.brightness ?? 0)
+  const [c, setC] = useState(initialParams?.c ?? 2)
+  const [blockSize, setBlockSize] = useState(initialParams?.block_size ?? 11)
+  const [denoiseStrength, setDenoiseStrength] = useState(initialParams?.denoise_strength ?? 10)
+  
+  // 当initialParams变化时更新本地状态（但只在组件初始化时）
+  const [initialized, setInitialized] = useState(false)
+  useEffect(() => {
+    if (initialParams && !initialized) {
+      setContrast(initialParams.contrast ?? 1.0)
+      setBrightness(initialParams.brightness ?? 0)
+      setC(initialParams.c ?? 2)
+      setBlockSize(initialParams.block_size ?? 11)
+      setDenoiseStrength(initialParams.denoise_strength ?? 10)
+      setInitialized(true)
+    }
+  }, [initialParams, initialized])
 
-  const { reprocessNote } = useNotesStore()
-
-  // 应用参数（延迟执行，避免频繁调用）
+  // 应用参数 - 直接调用API
   const applyParams = async (params) => {
     setLoading(true)
     try {
-      const result = await reprocessNote(noteId, params)
-      if (result.success) {
-        onAdjustSuccess?.()
-      } else {
-        message.error(result.error || '调整失败')
-      }
+      console.log('Calling reprocess API with params:', params)
+      const response = await notesAPI.reprocess(noteId, params)
+      console.log('Reprocess API response:', response)
+      message.success('参数应用成功')
+      // 调用回调刷新图片
+      onAdjustSuccess?.()
     } catch (error) {
-      console.error('Apply params error:', error)
-      message.error('调整失败')
+      console.error('Reprocess API error:', error)
+      message.error('调整失败: ' + (error.response?.data?.detail || error.message))
     } finally {
       setLoading(false)
     }
@@ -51,6 +61,13 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate }) {
 
   // 参数变化后应用
   const handleSliderComplete = (key, value) => {
+    // 更新本地状态
+    if (key === 'contrast') setContrast(value)
+    if (key === 'brightness') setBrightness(value)
+    if (key === 'c') setC(value)
+    if (key === 'block_size') setBlockSize(value)
+    if (key === 'denoise_strength') setDenoiseStrength(value)
+    
     const params = {
       contrast: key === 'contrast' ? value : contrast,
       brightness: key === 'brightness' ? value : brightness,
@@ -59,7 +76,7 @@ export default function AIAssistant({ noteId, onAdjustSuccess, onRotate }) {
       denoise_strength: key === 'denoise_strength' ? value : denoiseStrength,
     }
     
-    console.log('Applying params:', params)
+    console.log('Slider complete, applying params:', params)
     applyParams(params)
   }
 

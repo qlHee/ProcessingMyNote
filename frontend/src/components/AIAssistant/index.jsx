@@ -11,11 +11,11 @@ const { Text, Paragraph } = Typography
 const { TextArea } = Input
 
 const exampleInstructions = [
-  '字迹太淡，加深一点',
-  '背景不够白',
   '太模糊了',
   '噪点太多',
   '对比度太低',
+  '背景不够白',
+  '字迹太淡，加深一点',
 ]
 
 // 默认参数值

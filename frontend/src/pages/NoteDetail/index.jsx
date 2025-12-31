@@ -34,6 +34,7 @@ export default function NoteDetail() {
   const imageRef = useRef(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [fullscreenIndex, setFullscreenIndex] = useState(0)
+  const [annotationRefreshKey, setAnnotationRefreshKey] = useState(0)
 
   const { currentNote, notes, loading, fetchNote, updateNote, deleteNote, clearCurrentNote } = useNotesStore()
   const { folders } = useFoldersStore()
@@ -238,13 +239,17 @@ export default function NoteDetail() {
             {/* Image with Annotation Overlay - only show annotations on processed image */}
             {imageMode === 'processed' ? (
               <NoteAnnotator
+                key={`image-annotator-${annotationRefreshKey}`}
                 noteId={currentNote.id}
                 imageSrc={notesAPI.getImageUrl(currentNote.id, imageMode)}
                 annotationMode={annotationMode}
                 setAnnotationMode={setAnnotationMode}
                 fontSize={fontSize}
                 setFontSize={setFontSize}
-                onAnnotationChange={() => fetchNote(id)}
+                onAnnotationChange={() => {
+                  fetchNote(id)
+                  setAnnotationRefreshKey(k => k + 1)
+                }}
               />
             ) : (
               <img
@@ -328,13 +333,17 @@ export default function NoteDetail() {
                 label: <><HighlightOutlined /> 标注</>,
                 children: (
                   <NoteAnnotator
+                    key={`panel-annotator-${annotationRefreshKey}`}
                     noteId={currentNote.id}
                     imageSrc={notesAPI.getImageUrl(currentNote.id, imageMode)}
                     annotationMode={annotationMode}
                     setAnnotationMode={setAnnotationMode}
                     fontSize={fontSize}
                     setFontSize={setFontSize}
-                    onAnnotationChange={() => fetchNote(id)}
+                    onAnnotationChange={() => {
+                      fetchNote(id)
+                      setAnnotationRefreshKey(k => k + 1)
+                    }}
                     panelMode={true}
                   />
                 ),

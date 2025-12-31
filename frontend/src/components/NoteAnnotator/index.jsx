@@ -552,6 +552,7 @@ export default function NoteAnnotator({
                             setEditContent('')
                             message.success('更新成功')
                             await fetchAnnotations()
+                            onAnnotationChange?.()
                           } catch (error) {
                             console.error('Update error:', error)
                             message.error('更新失败')

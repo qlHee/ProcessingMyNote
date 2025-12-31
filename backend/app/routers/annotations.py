@@ -97,8 +97,12 @@ def render_annotations_to_image(note: Note, annotations: list) -> str:
         color_rgb = hex_to_rgb(color_hex)
         
         # 获取字体大小/线条粗细
+        # 前端: strokeWidth = font_size * 0.15 (在SVG viewBox 0-100坐标系中)
+        # 转换到像素: stroke_width_px = font_size * 0.15 * (image_size / 100)
         font_size = annotation.font_size or 1.0
-        stroke_width = max(2, int(font_size * 0.15 * min(width, height) / 100 * 5))
+        # 使用图片对角线长度的比例来计算线条粗细，与前端SVG渲染保持一致
+        scale_factor = min(width, height) / 100
+        stroke_width = max(1, int(font_size * 0.15 * scale_factor))
         
         # 计算位置（百分比转像素）
         x = int(annotation.x * width / 100)
@@ -106,7 +110,7 @@ def render_annotations_to_image(note: Note, annotations: list) -> str:
         
         if ann_type == 'text':
             # 文字标注 - 绘制标记点和文字
-            marker_radius = max(8, int(min(width, height) / 80))
+            marker_radius = max(6, int(min(width, height) / 100))
             
             # 绘制标记点（带颜色的圆点）
             draw.ellipse(
@@ -118,7 +122,7 @@ def render_annotations_to_image(note: Note, annotations: list) -> str:
             
             # 绘制文字
             text_content = str(ann_data)
-            text_font_size = max(12, int(font_size * min(width, height) / 60))
+            text_font_size = max(14, int(font_size * min(width, height) / 50))
             
             try:
                 if base_font:
@@ -145,17 +149,17 @@ def render_annotations_to_image(note: Note, annotations: list) -> str:
             if text_y + text_height > height - 5:
                 text_y = height - text_height - 5
             
-            # 绘制文字背景
+            # 绘制文字背景（半透明白色）
             padding = 4
             draw.rectangle(
                 [text_x - padding, text_y - padding, text_x + text_width + padding, text_y + text_height + padding],
-                fill=(255, 255, 255, 230),
+                fill=(255, 255, 255, 220),
                 outline=color_rgb + (255,),
                 width=2
             )
             
-            # 绘制文字
-            draw.text((text_x, text_y), text_content, fill=(0, 0, 0, 255), font=font)
+            # 绘制文字（使用标注颜色）
+            draw.text((text_x, text_y), text_content, fill=color_rgb + (255,), font=font)
             
         elif ann_type == 'line':
             # 直线
@@ -171,9 +175,9 @@ def render_annotations_to_image(note: Note, annotations: list) -> str:
             # 绘制线条
             draw.line([(x, y), (x2, y2)], fill=color_rgb + (255,), width=stroke_width)
             
-            # 绘制箭头头部
+            # 绘制箭头头部 - 与前端一致: arrowSize = strokeWidth * 4
             angle = math.atan2(y2 - y, x2 - x)
-            arrow_size = stroke_width * 4
+            arrow_size = stroke_width * 3  # 稍微小一点，避免太大
             
             # 箭头的两个点
             arrow_angle = math.pi / 6  # 30度
@@ -185,41 +189,58 @@ def render_annotations_to_image(note: Note, annotations: list) -> str:
             draw.polygon([(x2, y2), (p1_x, p1_y), (p2_x, p2_y)], fill=color_rgb + (255,))
             
         elif ann_type == 'wave':
-            # 波浪线
-            x2 = int(ann_data['x2'] * width / 100)
-            y2 = int(ann_data['y2'] * height / 100)
+            # 波浪线 - 使用与前端相同的贝塞尔曲线算法
+            # 前端使用百分比坐标，这里转换为像素
+            x1_pct = annotation.x
+            y1_pct = annotation.y
+            x2_pct = ann_data['x2']
+            y2_pct = ann_data['y2']
             
-            dx = x2 - x
-            dy = y2 - y
-            length = math.sqrt(dx * dx + dy * dy)
-            wave_count = max(3, int(length / 20))
-            amplitude = stroke_width * 3
+            dx_pct = x2_pct - x1_pct
+            dy_pct = y2_pct - y1_pct
+            length_pct = math.sqrt(dx_pct * dx_pct + dy_pct * dy_pct)
+            wave_count = max(3, int(length_pct / 3))  # 与前端一致
+            amplitude_pct = font_size * 0.15 * 3  # strokeWidth * 3
             
-            # 生成波浪线的点
+            # 生成波浪线的点（模拟贝塞尔曲线）
             points = []
-            for i in range(wave_count * 10 + 1):
-                t = i / (wave_count * 10)
-                px = x + dx * t
-                py = y + dy * t
+            num_points = wave_count * 20  # 足够多的点来平滑曲线
+            
+            for i in range(num_points + 1):
+                t = i / num_points
+                # 基础位置
+                base_x = x1_pct + dx_pct * t
+                base_y = y1_pct + dy_pct * t
                 
-                # 添加正弦波动
-                wave_offset = amplitude * math.sin(t * wave_count * 2 * math.pi)
+                # 计算当前在哪个波段
+                wave_progress = t * wave_count
+                wave_index = int(wave_progress)
+                wave_t = wave_progress - wave_index
+                
+                # 使用正弦函数模拟贝塞尔曲线的波浪效果
+                # 前端的Q命令在每个波段的中点达到最大振幅
+                wave_offset = amplitude_pct * math.sin(wave_t * math.pi) * (1 if wave_index % 2 == 0 else -1)
+                
                 # 垂直于线条方向的偏移
-                perp_x = -dy / length if length > 0 else 0
-                perp_y = dx / length if length > 0 else 0
+                if length_pct > 0:
+                    perp_x = -dy_pct / length_pct
+                    perp_y = dx_pct / length_pct
+                else:
+                    perp_x, perp_y = 0, 0
                 
-                px += perp_x * wave_offset
-                py += perp_y * wave_offset
-                points.append((px, py))
+                final_x = (base_x + perp_x * wave_offset) * width / 100
+                final_y = (base_y + perp_y * wave_offset) * height / 100
+                points.append((final_x, final_y))
             
             if len(points) >= 2:
                 draw.line(points, fill=color_rgb + (255,), width=stroke_width)
             
         elif ann_type == 'draw':
-            # 自由绘制
+            # 自由绘制 - 与前端一致: strokeWidth * 0.7
             if isinstance(ann_data, list) and len(ann_data) >= 2:
                 points = [(int(p['x'] * width / 100), int(p['y'] * height / 100)) for p in ann_data]
-                draw.line(points, fill=color_rgb + (255,), width=max(1, stroke_width // 2))
+                draw_stroke = max(1, int(stroke_width * 0.7))
+                draw.line(points, fill=color_rgb + (255,), width=draw_stroke)
     
     # 合并overlay到原图
     img = Image.alpha_composite(img, overlay)

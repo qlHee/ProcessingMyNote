@@ -365,3 +365,88 @@ const [annotationRefreshKey, setAnnotationRefreshKey] = useState(0)
 
 ---
 
+## v1.3: 导出功能与标注渲染优化 📤
+**日期:** 2024-12-31
+
+### 核心功能
+1. **笔记导出功能**
+   - 单个笔记导出（带标注）
+   - 文件夹导出（ZIP打包，保持文件夹结构）
+   - 批量导出（多选模式）
+   - 支持UTF-8文件名（RFC 5987编码）
+   - 优先导出带标注的图片，无标注则导出处理后图片
+
+2. **标注图片渲染重构**
+   - 使用PIL替代OpenCV，支持中文文字渲染
+   - 支持所有标注类型：文字、直线、箭头、波浪线、涂鸦
+   - 标注颜色和大小与网页显示完全一致
+   - 文字标注简洁显示（无圆点、无背景框）
+
+3. **导出接口实现**
+   - `GET /api/export/note/{note_id}` - 导出单个笔记
+   - `GET /api/export/folder/{folder_id}` - 导出文件夹（ZIP）
+   - 自动查找并使用 `_annotated` 后缀的标注图片
+   - 文件名正确编码，支持中文和特殊字符
+
+### Bug 修复
+- 修复标注拖拽后位置不保存的问题（useEffect依赖数组）
+- 修复导出图片中标注显示不正确的问题
+  - 线条粗细计算错误
+  - 波浪线算法不匹配前端
+  - 箭头过大
+  - 文字颜色显示为黑色
+- 修复文件名乱码问题（RFC 5987编码）
+
+### 技术细节
+**后端导出逻辑**
+```python
+# 优先使用标注图片
+annotated_path = processed_path.parent / f"{processed_path.stem}_annotated{suffix}"
+export_path = annotated_path if annotated_path.exists() else processed_path
+
+# RFC 5987文件名编码
+encoded_filename = quote(f"{note.title}{export_path.suffix}")
+headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
+```
+
+**标注渲染优化**
+```python
+# 使用PIL支持中文
+from PIL import Image, ImageDraw, ImageFont
+
+# 线条粗细与前端一致
+stroke_width = max(1, int(font_size * 0.15 * scale_factor))
+
+# 波浪线使用贝塞尔曲线模拟
+wave_offset = amplitude_pct * math.sin(wave_t * math.pi) * (1 if wave_index % 2 == 0 else -1)
+```
+
+**前端导出实现**
+```javascript
+// 使用fetch + Authorization header
+const response = await fetch(`/api/export/note/${noteId}`, {
+  method: 'GET',
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+// 解析RFC 5987编码的文件名
+const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\s]+)/i);
+const filename = decodeURIComponent(utf8Match[1]);
+```
+
+### UI改进
+- 在笔记三点菜单添加"导出"选项
+- 在文件夹三点菜单添加"导出"选项
+- 在多选工具栏添加"导出"按钮
+- 导出成功/失败消息提示
+
+### 提交记录
+- `27f367c` - 改进导出功能错误处理
+- `d227fd0` - 重写标注渲染逻辑，支持所有标注类型
+- `f580091` - 修复标注渲染问题（线条粗细、波浪线、箭头、文字颜色）
+- `f216d7a` - 修复标注拖拽后位置不保存的问题
+- `c8f62bb` - 去掉导出图片中文字标注前的圆点
+- `bb75da7` - 去掉导出图片中文字标注外面的背景框
+
+---
+

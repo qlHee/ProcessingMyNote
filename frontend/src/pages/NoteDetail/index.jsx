@@ -246,6 +246,8 @@ export default function NoteDetail() {
                 setAnnotationMode={setAnnotationMode}
                 fontSize={fontSize}
                 setFontSize={setFontSize}
+                color={color}
+                setColor={setColor}
                 onAnnotationChange={() => {
                   fetchNote(id)
                   setAnnotationRefreshKey(k => k + 1)
@@ -340,6 +342,8 @@ export default function NoteDetail() {
                     setAnnotationMode={setAnnotationMode}
                     fontSize={fontSize}
                     setFontSize={setFontSize}
+                    color={color}
+                    setColor={setColor}
                     onAnnotationChange={() => {
                       fetchNote(id)
                       setAnnotationRefreshKey(k => k + 1)
@@ -383,6 +387,8 @@ export default function NoteDetail() {
                   setAnnotationMode={() => {}}
                   fontSize={fontSize}
                   setFontSize={setFontSize}
+                  color={color}
+                  setColor={setColor}
                   onAnnotationChange={() => {}}
                   panelMode={false}
                 />

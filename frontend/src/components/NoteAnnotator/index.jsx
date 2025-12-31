@@ -19,7 +19,9 @@ export default function NoteAnnotator({
   annotationMode, 
   setAnnotationMode, 
   fontSize, 
-  setFontSize, 
+  setFontSize,
+  color,
+  setColor,
   onAnnotationChange,
   panelMode = false
 }) {
@@ -32,7 +34,6 @@ export default function NoteAnnotator({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [dragStartPos, setDragStartPos] = useState(null)
   const [hasDragged, setHasDragged] = useState(false)
-  const [color, setColor] = useState('#1890ff')
   const [annotationType, setAnnotationType] = useState('text')
   const imageRef = useRef(null)
   const containerRef = useRef(null)

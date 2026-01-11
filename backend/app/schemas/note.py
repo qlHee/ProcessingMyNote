@@ -32,7 +32,6 @@ class NoteResponse(BaseModel):
     title: str
     original_path: str
     processed_path: str | None
-    ocr_text: str | None
     folder_id: int | None
     user_id: int
     processing_params: dict | None

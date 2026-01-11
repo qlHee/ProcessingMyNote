@@ -1,6 +1,7 @@
 """
 Notes Router - Full CRUD for notes with image upload and processing
 """
+import re
 import uuid
 import shutil
 import asyncio
@@ -21,7 +22,6 @@ from app.models.folder import Folder
 from app.schemas.note import NoteCreate, NoteUpdate, NoteResponse, NoteListResponse, ProcessingParams
 from app.routers.auth import get_current_user
 from app.services.image_processor import ImageProcessor, process_note_image
-from app.services.ocr_service import generate_title_from_image, extract_text_from_image
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
 
@@ -47,7 +47,7 @@ async def get_notes(
     - folder_id: Filter by single folder
     - folder_ids: Filter by multiple folders (comma-separated IDs)
     - tag_ids: Filter by tags (comma-separated IDs)
-    - keyword: Search in title and OCR text
+    - keyword: Search in title
     """
     query = select(Note).where(Note.user_id == current_user.id).options(selectinload(Note.tags))
     
@@ -64,21 +64,19 @@ async def get_notes(
         else:
             query = query.where(Note.folder_id == folder_id)
     
-    # Filter by tags
+    # Filter by tags (AND logic: note must have ALL specified tags)
     if tag_ids:
         tag_id_list = [int(tid.strip()) for tid in tag_ids.split(",") if tid.strip()]
         if tag_id_list:
-            query = query.join(NoteTag).where(NoteTag.c.tag_id.in_(tag_id_list))
+            # For each tag, join and filter to ensure note has that tag
+            for tag_id in tag_id_list:
+                note_tag_alias = NoteTag.alias()
+                query = query.join(note_tag_alias, Note.id == note_tag_alias.c.note_id).where(note_tag_alias.c.tag_id == tag_id)
     
     # Search keyword
     if keyword:
         keyword_pattern = f"%{keyword}%"
-        query = query.where(
-            or_(
-                Note.title.ilike(keyword_pattern),
-                Note.ocr_text.ilike(keyword_pattern)
-            )
-        )
+        query = query.where(Note.title.ilike(keyword_pattern))
     
     query = query.order_by(Note.updated_at.desc())
     result = await db.execute(query)
@@ -115,7 +113,7 @@ async def upload_note(
     """
     Upload a new note image
     - Automatically processes image (white paper, black text effect)
-    - Runs OCR to extract text and generate title
+    - Auto-generates numbered title if not provided (笔记-1, 笔记-2, etc.)
     """
     # Validate file type
     if not file.filename or not validate_image(file.filename):
@@ -146,16 +144,38 @@ async def upload_note(
         processor = ImageProcessor()
         await asyncio.to_thread(processor.process, str(original_path), str(processed_path))
         
-        # Extract text and generate title in thread pool
-        ocr_text = await asyncio.to_thread(extract_text_from_image, str(processed_path))
-        auto_title = title or await asyncio.to_thread(generate_title_from_image, str(processed_path))
+        # Generate auto-numbered title if not provided
+        if not title:
+            # Find existing notes with pattern "笔记-N"
+            result = await db.execute(
+                select(Note.title).where(
+                    Note.user_id == current_user.id,
+                    Note.title.like('笔记-%')
+                )
+            )
+            existing_titles = [row[0] for row in result.fetchall()]
+            
+            # Extract numbers and find next available
+            existing_numbers = []
+            for t in existing_titles:
+                match = re.match(r'^笔记-(\d+)$', t)
+                if match:
+                    existing_numbers.append(int(match.group(1)))
+            
+            # Find next number
+            next_num = 1
+            while next_num in existing_numbers:
+                next_num += 1
+            
+            auto_title = f"笔记-{next_num}"
+        else:
+            auto_title = title
         
         # Create note record
         note = Note(
             title=auto_title,
             original_path=str(original_path.relative_to(settings.BASE_DIR)),
             processed_path=str(processed_path.relative_to(settings.BASE_DIR)),
-            ocr_text=ocr_text,
             folder_id=folder_id,
             user_id=current_user.id,
             processing_params=processor.params.to_dict()
@@ -273,6 +293,93 @@ async def reprocess_note(
     # Update params in database
     note.processing_params = params.model_dump()
     await db.flush()
+    await db.refresh(note)
+    return note
+
+
+@router.post("/{note_id}/rotate/", response_model=NoteResponse)
+async def rotate_note(
+    note_id: int,
+    angle: int = Form(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Rotate note image by specified angle (90, -90, 180)
+    """
+    result = await db.execute(
+        select(Note)
+        .where(Note.id == note_id, Note.user_id == current_user.id)
+        .options(selectinload(Note.tags))
+    )
+    note = result.scalar_one_or_none()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    original_path = settings.BASE_DIR / note.original_path
+    processed_path = settings.BASE_DIR / note.processed_path
+    
+    if not original_path.exists():
+        raise HTTPException(status_code=404, detail="Original image not found")
+    
+    # Rotate both original and processed images
+    from PIL import Image
+    
+    # Rotate original
+    with Image.open(original_path) as img:
+        rotated = img.rotate(-angle, expand=True)  # PIL rotates counter-clockwise, so negate
+        rotated.save(original_path)
+    
+    # Rotate processed if exists
+    if processed_path.exists():
+        with Image.open(processed_path) as img:
+            rotated = img.rotate(-angle, expand=True)
+            rotated.save(processed_path)
+    
+    await db.refresh(note)
+    return note
+
+
+@router.post("/{note_id}/crop/", response_model=NoteResponse)
+async def crop_note(
+    note_id: int,
+    x: int = Form(...),
+    y: int = Form(...),
+    width: int = Form(...),
+    height: int = Form(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Crop note image to specified region
+    """
+    result = await db.execute(
+        select(Note)
+        .where(Note.id == note_id, Note.user_id == current_user.id)
+        .options(selectinload(Note.tags))
+    )
+    note = result.scalar_one_or_none()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    original_path = settings.BASE_DIR / note.original_path
+    processed_path = settings.BASE_DIR / note.processed_path
+    
+    if not original_path.exists():
+        raise HTTPException(status_code=404, detail="Original image not found")
+    
+    from PIL import Image
+    
+    # Crop original
+    with Image.open(original_path) as img:
+        cropped = img.crop((x, y, x + width, y + height))
+        cropped.save(original_path)
+    
+    # Reprocess the cropped image
+    processor = ImageProcessor()
+    params = note.processing_params or {}
+    processor.process_with_params(str(original_path), str(processed_path), params)
+    
     await db.refresh(note)
     return note
 

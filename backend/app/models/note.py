@@ -23,7 +23,6 @@ class Note(Base):
     title: Mapped[str] = mapped_column(String(200))
     original_path: Mapped[str] = mapped_column(String(500))
     processed_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    ocr_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     folder_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("folders.id"), nullable=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
     processing_params: Mapped[dict | None] = mapped_column(JSON, nullable=True)

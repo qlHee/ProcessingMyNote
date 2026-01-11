@@ -1,37 +1,187 @@
 /**
  * AIAssistant - Natural language image adjustment
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Input, Button, Card, Typography, Space, Alert, Slider, Collapse, message } from 'antd'
-import { SendOutlined, RobotOutlined, SettingOutlined, ReloadOutlined } from '@ant-design/icons'
+import { SendOutlined, RobotOutlined, SettingOutlined, RotateLeftOutlined, RotateRightOutlined, UndoOutlined, RedoOutlined, ReloadOutlined } from '@ant-design/icons'
 import { aiAPI, notesAPI } from '../../api'
-import { useNotesStore } from '../../stores'
 import './index.css'
 
 const { Text, Paragraph } = Typography
 const { TextArea } = Input
 
 const exampleInstructions = [
-  '字迹太淡了，加深一点',
-  '背景不够白，处理一下',
-  '太模糊了，锐化一下',
-  '噪点太多，去噪',
-  '对比度不够，增强一下',
+  '太模糊了',
+  '噪点太多',
+  '对比度太低',
+  '背景不够白',
+  '字迹太淡，加深一点',
 ]
 
-export default function AIAssistant({ noteId, onAdjustSuccess }) {
+// 默认参数值
+const DEFAULT_PARAMS = {
+  contrast: 1.0,
+  brightness: 0,
+  c: 2,
+  block_size: 11,
+  denoise_strength: 10,
+}
+
+export default function AIAssistant({ noteId, onAdjustSuccess, onRotate, initialParams }) {
   const [instruction, setInstruction] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
-  const [manualParams, setManualParams] = useState({
-    block_size: 11,
-    c: 2,
-    contrast: 1.0,
-    brightness: 0,
-    denoise_strength: 10,
-  })
+  const [contrast, setContrast] = useState(initialParams?.contrast ?? DEFAULT_PARAMS.contrast)
+  const [brightness, setBrightness] = useState(initialParams?.brightness ?? DEFAULT_PARAMS.brightness)
+  const [c, setC] = useState(initialParams?.c ?? DEFAULT_PARAMS.c)
+  const [blockSize, setBlockSize] = useState(initialParams?.block_size ?? DEFAULT_PARAMS.block_size)
+  const [denoiseStrength, setDenoiseStrength] = useState(initialParams?.denoise_strength ?? DEFAULT_PARAMS.denoise_strength)
+  
+  // 撤销/重做历史记录
+  const [history, setHistory] = useState([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
+  
+  // 当initialParams变化时更新本地状态（但只在组件初始化时）
+  const [initialized, setInitialized] = useState(false)
+  useEffect(() => {
+    if (initialParams && !initialized) {
+      const params = {
+        contrast: initialParams.contrast ?? DEFAULT_PARAMS.contrast,
+        brightness: initialParams.brightness ?? DEFAULT_PARAMS.brightness,
+        c: initialParams.c ?? DEFAULT_PARAMS.c,
+        block_size: initialParams.block_size ?? DEFAULT_PARAMS.block_size,
+        denoise_strength: initialParams.denoise_strength ?? DEFAULT_PARAMS.denoise_strength,
+      }
+      setContrast(params.contrast)
+      setBrightness(params.brightness)
+      setC(params.c)
+      setBlockSize(params.block_size)
+      setDenoiseStrength(params.denoise_strength)
+      // 初始化历史记录
+      setHistory([params])
+      setHistoryIndex(0)
+      setInitialized(true)
+    }
+  }, [initialParams, initialized])
+  
+  // 保存到历史记录
+  const saveToHistory = (params) => {
+    const newHistory = history.slice(0, historyIndex + 1)
+    newHistory.push(params)
+    setHistory(newHistory)
+    setHistoryIndex(newHistory.length - 1)
+  }
+  
+  // 撤销
+  const handleUndo = async () => {
+    if (historyIndex > 0) {
+      const prevIndex = historyIndex - 1
+      const prevParams = history[prevIndex]
+      setHistoryIndex(prevIndex)
+      setContrast(prevParams.contrast)
+      setBrightness(prevParams.brightness)
+      setC(prevParams.c)
+      setBlockSize(prevParams.block_size)
+      setDenoiseStrength(prevParams.denoise_strength)
+      await applyParams(prevParams, false) // 不保存到历史
+    }
+  }
+  
+  // 重做
+  const handleRedo = async () => {
+    if (historyIndex < history.length - 1) {
+      const nextIndex = historyIndex + 1
+      const nextParams = history[nextIndex]
+      setHistoryIndex(nextIndex)
+      setContrast(nextParams.contrast)
+      setBrightness(nextParams.brightness)
+      setC(nextParams.c)
+      setBlockSize(nextParams.block_size)
+      setDenoiseStrength(nextParams.denoise_strength)
+      await applyParams(nextParams, false) // 不保存到历史
+    }
+  }
+  
+  // 恢复默认值
+  const handleResetDefault = async () => {
+    setContrast(DEFAULT_PARAMS.contrast)
+    setBrightness(DEFAULT_PARAMS.brightness)
+    setC(DEFAULT_PARAMS.c)
+    setBlockSize(DEFAULT_PARAMS.block_size)
+    setDenoiseStrength(DEFAULT_PARAMS.denoise_strength)
+    await applyParams(DEFAULT_PARAMS, true)
+  }
+  
+  // 左旋转
+  const handleRotateLeft = async () => {
+    await onRotate?.(-90)
+    // 获取当前参数并保存到历史
+    const currentParams = {
+      contrast,
+      brightness,
+      c,
+      block_size: blockSize,
+      denoise_strength: denoiseStrength,
+    }
+    saveToHistory(currentParams)
+  }
+  
+  // 右旋转
+  const handleRotateRight = async () => {
+    await onRotate?.(90)
+    // 获取当前参数并保存到历史
+    const currentParams = {
+      contrast,
+      brightness,
+      c,
+      block_size: blockSize,
+      denoise_strength: denoiseStrength,
+    }
+    saveToHistory(currentParams)
+  }
 
-  const { reprocessNote } = useNotesStore()
+  // 应用参数 - 直接调用API
+  const applyParams = async (params, saveHistory = true) => {
+    setLoading(true)
+    try {
+      console.log('Calling reprocess API with params:', params)
+      const response = await notesAPI.reprocess(noteId, params)
+      console.log('Reprocess API response:', response)
+      message.success('参数应用成功')
+      // 保存到历史记录
+      if (saveHistory) {
+        saveToHistory(params)
+      }
+      // 调用回调刷新图片
+      onAdjustSuccess?.()
+    } catch (error) {
+      console.error('Reprocess API error:', error)
+      message.error('调整失败: ' + (error.response?.data?.detail || error.message))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 参数变化后应用
+  const handleSliderComplete = (key, value) => {
+    // 更新本地状态
+    if (key === 'contrast') setContrast(value)
+    if (key === 'brightness') setBrightness(value)
+    if (key === 'c') setC(value)
+    if (key === 'block_size') setBlockSize(value)
+    if (key === 'denoise_strength') setDenoiseStrength(value)
+    
+    const params = {
+      contrast: key === 'contrast' ? value : contrast,
+      brightness: key === 'brightness' ? value : brightness,
+      c: key === 'c' ? value : c,
+      block_size: key === 'block_size' ? value : blockSize,
+      denoise_strength: key === 'denoise_strength' ? value : denoiseStrength,
+    }
+    
+    console.log('Slider complete, applying params:', params)
+    applyParams(params, true)
+  }
 
   const handleAIAdjust = async () => {
     if (!instruction.trim()) {
@@ -46,7 +196,23 @@ export default function AIAssistant({ noteId, onAdjustSuccess }) {
       
       if (res.data.success) {
         message.success(res.data.message)
-        setManualParams(res.data.new_params)
+        // 更新本地参数状态
+        if (res.data.new_params) {
+          const newParams = {
+            contrast: res.data.new_params.contrast || DEFAULT_PARAMS.contrast,
+            brightness: res.data.new_params.brightness || DEFAULT_PARAMS.brightness,
+            c: res.data.new_params.c || DEFAULT_PARAMS.c,
+            block_size: res.data.new_params.block_size || DEFAULT_PARAMS.block_size,
+            denoise_strength: res.data.new_params.denoise_strength || DEFAULT_PARAMS.denoise_strength,
+          }
+          setContrast(newParams.contrast)
+          setBrightness(newParams.brightness)
+          setC(newParams.c)
+          setBlockSize(newParams.block_size)
+          setDenoiseStrength(newParams.denoise_strength)
+          // 保存到历史记录
+          saveToHistory(newParams)
+        }
         onAdjustSuccess?.()
       } else {
         message.warning(res.data.message)
@@ -58,22 +224,6 @@ export default function AIAssistant({ noteId, onAdjustSuccess }) {
     }
   }
 
-  const handleManualAdjust = async () => {
-    setLoading(true)
-    try {
-      const result = await reprocessNote(noteId, manualParams)
-      if (result.success) {
-        message.success('参数调整成功')
-        onAdjustSuccess?.()
-      } else {
-        message.error(result.error || '调整失败')
-      }
-    } catch (error) {
-      message.error('调整失败')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleExampleClick = (example) => {
     setInstruction(example)
@@ -136,70 +286,119 @@ export default function AIAssistant({ noteId, onAdjustSuccess }) {
         )}
       </Card>
 
+      {/* 撤销/重做按钮 */}
+      <div className="undo-redo-bar">
+        <Button
+          icon={<UndoOutlined />}
+          size="small"
+          onClick={handleUndo}
+          disabled={historyIndex <= 0 || loading}
+        >
+          撤销
+        </Button>
+        <Button
+          icon={<RedoOutlined />}
+          size="small"
+          onClick={handleRedo}
+          disabled={historyIndex >= history.length - 1 || loading}
+        >
+          重做
+        </Button>
+      </div>
+
       {/* Manual Parameter Adjustment */}
       <Collapse
         ghost
+        defaultActiveKey={['manual']}
         items={[
           {
             key: 'manual',
             label: <><SettingOutlined /> 手动参数调整</>,
             children: (
               <div className="manual-params">
-                <div className="param-item">
-                  <Text>对比度: {manualParams.contrast.toFixed(1)}</Text>
-                  <Slider
-                    min={0.5}
-                    max={2.0}
-                    step={0.1}
-                    value={manualParams.contrast}
-                    onChange={(v) => setManualParams({ ...manualParams, contrast: v })}
+                {/* 旋转和恢复默认值按钮 */}
+                <div className="transform-buttons">
+                  <Button
+                    icon={<RotateLeftOutlined />}
+                    size="small"
+                    onClick={handleRotateLeft}
+                    disabled={loading}
+                    title="左旋转90°"
                   />
-                </div>
-                <div className="param-item">
-                  <Text>亮度: {manualParams.brightness}</Text>
-                  <Slider
-                    min={-50}
-                    max={50}
-                    value={manualParams.brightness}
-                    onChange={(v) => setManualParams({ ...manualParams, brightness: v })}
+                  <Button
+                    icon={<RotateRightOutlined />}
+                    size="small"
+                    onClick={handleRotateRight}
+                    disabled={loading}
+                    title="右旋转90°"
                   />
+                  <Button
+                    icon={<ReloadOutlined />}
+                    size="small"
+                    onClick={handleResetDefault}
+                    disabled={loading}
+                  >
+                    恢复默认
+                  </Button>
                 </div>
+
                 <div className="param-item">
-                  <Text>阈值偏移 (C): {manualParams.c}</Text>
+                  <Text>降噪强度: {denoiseStrength}</Text>
                   <Slider
-                    min={-20}
+                    min={0}
                     max={20}
-                    value={manualParams.c}
-                    onChange={(v) => setManualParams({ ...manualParams, c: v })}
+                    value={denoiseStrength}
+                    onChange={setDenoiseStrength}
+                    onChangeComplete={(v) => handleSliderComplete('denoise_strength', v)}
+                    disabled={loading}
                   />
                 </div>
                 <div className="param-item">
-                  <Text>块大小: {manualParams.block_size}</Text>
+                  <Text>块大小: {blockSize}</Text>
                   <Slider
                     min={3}
                     max={31}
                     step={2}
-                    value={manualParams.block_size}
-                    onChange={(v) => setManualParams({ ...manualParams, block_size: v })}
+                    value={blockSize}
+                    onChange={setBlockSize}
+                    onChangeComplete={(v) => handleSliderComplete('block_size', v)}
+                    disabled={loading}
                   />
                 </div>
                 <div className="param-item">
-                  <Text>降噪强度: {manualParams.denoise_strength}</Text>
+                  <Text>阈值偏移 (C): {c}</Text>
                   <Slider
-                    min={0}
+                    min={-20}
                     max={20}
-                    value={manualParams.denoise_strength}
-                    onChange={(v) => setManualParams({ ...manualParams, denoise_strength: v })}
+                    value={c}
+                    onChange={setC}
+                    onChangeComplete={(v) => handleSliderComplete('c', v)}
+                    disabled={loading}
                   />
                 </div>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={handleManualAdjust}
-                  loading={loading}
-                  block
-                >
-                  应用参数
-                </Button>
+                <div className="param-item">
+                  <Text>亮度: {brightness}</Text>
+                  <Slider
+                    min={-50}
+                    max={50}
+                    value={brightness}
+                    onChange={setBrightness}
+                    onChangeComplete={(v) => handleSliderComplete('brightness', v)}
+                    disabled={loading}
+                  />
+                </div>
+                <div className="param-item">
+                  <Text>对比度: {contrast.toFixed(1)}</Text>
+                  <Slider
+                    min={0.5}
+                    max={2.0}
+                    step={0.1}
+                    value={contrast}
+                    onChange={setContrast}
+                    onChangeComplete={(v) => handleSliderComplete('contrast', v)}
+                    disabled={loading}
+                  />
+                </div>
               </div>
             ),
           },

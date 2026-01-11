@@ -1,16 +1,16 @@
 /**
  * NoteDetail Page - View, edit and annotate note
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { 
   Button, Spin, Typography, Space, Tag, Modal, 
   Form, Input, Select, message, Tabs, Descriptions, Segmented
 } from 'antd'
 import { 
-  ArrowLeftOutlined, DeleteOutlined,
+  ArrowLeftOutlined, DeleteOutlined, LeftOutlined, RightOutlined,
   FileImageOutlined, EyeOutlined, SettingOutlined, TagsOutlined,
-  FolderOutlined, ClockCircleOutlined, FileTextOutlined, HighlightOutlined, SaveOutlined, MenuFoldOutlined, MenuUnfoldOutlined
+  FolderOutlined, ClockCircleOutlined, FileTextOutlined, HighlightOutlined, SaveOutlined, MenuFoldOutlined, MenuUnfoldOutlined, FullscreenOutlined, FullscreenExitOutlined
 } from '@ant-design/icons'
 import { useNotesStore, useFoldersStore, useTagsStore } from '../../stores'
 import { useOutletContext } from 'react-router-dom'
@@ -25,12 +25,85 @@ export default function NoteDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [imageMode, setImageMode] = useState('processed')
+  const [activeTab, setActiveTab] = useState('info')
+  const [annotationMode, setAnnotationMode] = useState(null)
+  const [fontSize, setFontSize] = useState(1.5)
+  const [color, setColor] = useState('#1890ff')
   const [form] = Form.useForm()
   const { collapsed, setCollapsed } = useOutletContext()
+  const imageRef = useRef(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [fullscreenIndex, setFullscreenIndex] = useState(0)
+  const [annotationRefreshKey, setAnnotationRefreshKey] = useState(0)
+  const [imageRefreshKey, setImageRefreshKey] = useState(0)
 
-  const { currentNote, loading, fetchNote, updateNote, deleteNote, clearCurrentNote } = useNotesStore()
+  const { currentNote, notes, loading, fetchNote, updateNote, deleteNote, clearCurrentNote } = useNotesStore()
   const { folders } = useFoldersStore()
   const { tags } = useTagsStore()
+
+  // When switching away from annotate tab, disable annotation mode
+  useEffect(() => {
+    if (activeTab !== 'annotate') {
+      setAnnotationMode(null)
+    }
+  }, [activeTab])
+
+  // Get current note index in the notes list
+  const currentIndex = notes.findIndex(note => note.id === parseInt(id))
+  const hasPrevious = currentIndex > 0
+  const hasNext = currentIndex < notes.length - 1
+
+  const handlePrevious = () => {
+    if (hasPrevious) {
+      navigate(`/note/${notes[currentIndex - 1].id}`)
+    }
+  }
+
+  const handleNext = () => {
+    if (hasNext) {
+      navigate(`/note/${notes[currentIndex + 1].id}`)
+    }
+  }
+
+  // Fullscreen handlers
+  const handleEnterFullscreen = () => {
+    setIsFullscreen(true)
+    setFullscreenIndex(currentIndex)
+  }
+
+  const handleExitFullscreen = () => {
+    setIsFullscreen(false)
+  }
+
+  const handleFullscreenPrev = () => {
+    if (fullscreenIndex > 0) {
+      setFullscreenIndex(fullscreenIndex - 1)
+    }
+  }
+
+  const handleFullscreenNext = () => {
+    if (fullscreenIndex < notes.length - 1) {
+      setFullscreenIndex(fullscreenIndex + 1)
+    }
+  }
+
+  // Keyboard navigation in fullscreen
+  useEffect(() => {
+    if (!isFullscreen) return
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleExitFullscreen()
+      } else if (e.key === 'ArrowLeft') {
+        handleFullscreenPrev()
+      } else if (e.key === 'ArrowRight') {
+        handleFullscreenNext()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isFullscreen, fullscreenIndex, notes.length])
 
   useEffect(() => {
     fetchNote(id)
@@ -76,12 +149,30 @@ export default function NoteDetail() {
     })
   }
 
+  // 旋转图片
+  const handleRotate = async (angle) => {
+    try {
+      await notesAPI.rotate(currentNote.id, angle)
+      message.success('旋转成功')
+      // 强制刷新图片（通过改变key来绕过浏览器缓存）
+      setImageRefreshKey(k => k + 1)
+      fetchNote(id)
+    } catch (error) {
+      message.error('旋转失败: ' + (error.response?.data?.detail || error.message))
+    }
+  }
+
   if (loading || !currentNote) {
     return (
       <div className="note-detail-loading">
         <Spin size="large" />
       </div>
     )
+  }
+
+  // 生成带时间戳的图片URL，用于绕过浏览器缓存
+  const getImageUrlWithCache = (noteId, type) => {
+    return `${notesAPI.getImageUrl(noteId, type)}?t=${imageRefreshKey}`
   }
 
   // Build folder path
@@ -128,6 +219,12 @@ export default function NoteDetail() {
         </Title>
 
         <Space>
+          <Button 
+            icon={<FullscreenOutlined />} 
+            onClick={handleEnterFullscreen}
+          >
+            全屏
+          </Button>
           <Segmented
             value={imageMode}
             onChange={setImageMode}
@@ -147,13 +244,49 @@ export default function NoteDetail() {
 
       {/* Main Content */}
       <div className="note-detail-body">
-        {/* Left: Image Viewer */}
+        {/* Left: Image Viewer with Annotation */}
         <div className="note-viewer-section">
           <div className="note-image-container">
-            <img
-              src={notesAPI.getImageUrl(currentNote.id, imageMode)}
-              alt={currentNote.title}
-              className="note-image"
+            {/* Navigation Buttons */}
+            <Button
+              className="nav-button nav-button-prev"
+              icon={<LeftOutlined />}
+              onClick={handlePrevious}
+              disabled={!hasPrevious}
+              size="large"
+            />
+            {/* Image with Annotation Overlay - only show annotations on processed image */}
+            {imageMode === 'processed' ? (
+              <NoteAnnotator
+                key={`image-annotator-${annotationRefreshKey}-${imageRefreshKey}`}
+                noteId={currentNote.id}
+                imageSrc={getImageUrlWithCache(currentNote.id, imageMode)}
+                annotationMode={annotationMode}
+                setAnnotationMode={setAnnotationMode}
+                fontSize={fontSize}
+                setFontSize={setFontSize}
+                color={color}
+                setColor={setColor}
+                onAnnotationChange={() => {
+                  fetchNote(id)
+                  setAnnotationRefreshKey(k => k + 1)
+                }}
+              />
+            ) : (
+              <img
+                ref={imageRef}
+                src={getImageUrlWithCache(currentNote.id, imageMode)}
+                alt={currentNote.title}
+                className="note-image"
+                draggable={false}
+              />
+            )}
+            <Button
+              className="nav-button nav-button-next"
+              icon={<RightOutlined />}
+              onClick={handleNext}
+              disabled={!hasNext}
+              size="large"
             />
           </div>
         </div>
@@ -161,7 +294,8 @@ export default function NoteDetail() {
         {/* Right: Info Panel */}
         <div className="note-info-section">
           <Tabs
-            defaultActiveKey="info"
+            activeKey={activeTab}
+            onChange={setActiveTab}
             items={[
               {
                 key: 'info',
@@ -211,7 +345,11 @@ export default function NoteDetail() {
                 children: (
                   <AIAssistant 
                     noteId={currentNote.id} 
-                    onAdjustSuccess={() => fetchNote(id)}
+                    initialParams={currentNote.processing_params}
+                    onAdjustSuccess={() => {
+                      setImageRefreshKey(k => k + 1)
+                    }}
+                    onRotate={handleRotate}
                   />
                 ),
               },
@@ -220,8 +358,20 @@ export default function NoteDetail() {
                 label: <><HighlightOutlined /> 标注</>,
                 children: (
                   <NoteAnnotator
+                    key={`panel-annotator-${annotationRefreshKey}-${imageRefreshKey}`}
                     noteId={currentNote.id}
-                    imageSrc={notesAPI.getImageUrl(currentNote.id, 'processed')}
+                    imageSrc={getImageUrlWithCache(currentNote.id, imageMode)}
+                    annotationMode={annotationMode}
+                    setAnnotationMode={setAnnotationMode}
+                    fontSize={fontSize}
+                    setFontSize={setFontSize}
+                    color={color}
+                    setColor={setColor}
+                    onAnnotationChange={() => {
+                      fetchNote(id)
+                      setAnnotationRefreshKey(k => k + 1)
+                    }}
+                    panelMode={true}
                   />
                 ),
               },
@@ -229,6 +379,70 @@ export default function NoteDetail() {
           />
         </div>
       </div>
+
+      {/* Fullscreen Modal */}
+      {isFullscreen && notes[fullscreenIndex] && (
+        <div className="fullscreen-viewer" onClick={handleExitFullscreen}>
+          <div className="fullscreen-content" onClick={(e) => e.stopPropagation()}>
+            <Button
+              className="fullscreen-close"
+              type="text"
+              icon={<FullscreenExitOutlined />}
+              onClick={handleExitFullscreen}
+              size="large"
+            />
+            
+            <Button
+              className="fullscreen-nav fullscreen-nav-prev"
+              icon={<LeftOutlined />}
+              onClick={handleFullscreenPrev}
+              disabled={fullscreenIndex === 0}
+              size="large"
+            />
+            
+            {/* Use NoteAnnotator in fullscreen for processed images */}
+            {imageMode === 'processed' ? (
+              <div className="fullscreen-annotator-container">
+                <NoteAnnotator
+                  noteId={notes[fullscreenIndex].id}
+                  imageSrc={notesAPI.getImageUrl(notes[fullscreenIndex].id, imageMode)}
+                  annotationMode={null}
+                  setAnnotationMode={() => {}}
+                  fontSize={fontSize}
+                  setFontSize={setFontSize}
+                  color={color}
+                  setColor={setColor}
+                  onAnnotationChange={() => {}}
+                  panelMode={false}
+                />
+              </div>
+            ) : (
+              <img
+                src={notesAPI.getImageUrl(notes[fullscreenIndex].id, imageMode)}
+                alt={notes[fullscreenIndex].title}
+                className="fullscreen-image"
+              />
+            )}
+            
+            <Button
+              className="fullscreen-nav fullscreen-nav-next"
+              icon={<RightOutlined />}
+              onClick={handleFullscreenNext}
+              disabled={fullscreenIndex === notes.length - 1}
+              size="large"
+            />
+            
+            <div className="fullscreen-info">
+              <Text strong style={{ color: '#fff', fontSize: '16px' }}>
+                {notes[fullscreenIndex].title}
+              </Text>
+              <Text style={{ color: '#fff', opacity: 0.8, marginLeft: '16px' }}>
+                {fullscreenIndex + 1} / {notes.length}
+              </Text>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -85,3 +85,6 @@ logs/
 .coverage
 htmlcov/
 .pytest_cache/
+
+# ===== Development Context =====
+CONTEXT_FOR_NEXT_SESSION.md

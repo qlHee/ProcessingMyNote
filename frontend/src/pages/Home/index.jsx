@@ -22,10 +22,11 @@ import {
   UploadOutlined,
   CheckSquareOutlined,
   CheckOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons'
 import { useNotesStore, useFoldersStore, useTagsStore, useAuthStore } from '../../stores'
 import UploadModal from '../../components/UploadModal'
-import { notesAPI } from '../../api'
+import { notesAPI, exportAPI } from '../../api'
 import './index.css'
 
 export default function Home() {
@@ -232,6 +233,20 @@ export default function Home() {
     })
   }
 
+  const handleBatchExport = async () => {
+    if (selectedNotes.length === 0) return
+    try {
+      let successCount = 0
+      for (const noteId of selectedNotes) {
+        await exportAPI.exportNote(noteId)
+        successCount++
+      }
+      message.success(`成功导出 ${successCount} 个笔记`)
+    } catch (error) {
+      message.error('批量导出失败')
+    }
+  }
+
   const getMenuItems = (note) => [
     {
       key: 'multiselect',
@@ -260,6 +275,20 @@ export default function Home() {
         e.domEvent.stopPropagation()
         setSelectedNote(note)
         setCopyModalVisible(true)
+      },
+    },
+    {
+      key: 'export',
+      icon: <DownloadOutlined />,
+      label: '导出',
+      onClick: async (e) => {
+        e.domEvent.stopPropagation()
+        try {
+          await exportAPI.exportNote(note.id)
+          message.success('导出成功')
+        } catch (error) {
+          message.error('导出失败')
+        }
       },
     },
     {
@@ -475,6 +504,13 @@ export default function Home() {
                 disabled={selectedNotes.length === 0}
               >
                 复制到
+              </Button>
+              <Button 
+                icon={<DownloadOutlined />}
+                onClick={handleBatchExport}
+                disabled={selectedNotes.length === 0}
+              >
+                导出
               </Button>
               <Button 
                 danger
